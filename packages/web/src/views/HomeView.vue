@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { dayEnd, parseYmd, ymd } from '../lib/dates'
@@ -9,6 +9,8 @@ import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
 import RepoList from '../components/RepoList.vue'
 import CommitList from '../components/CommitList.vue'
+import SummaryPanel from '../components/SummaryPanel.vue'
+import { loadPref, savePref } from '../lib/prefs'
 
 const store = useAppStore()
 const route = useRoute()
@@ -31,6 +33,10 @@ function writeUrl() {
   written.add(`${from}|${to}`)
   router.replace({ query: { ...route.query, from, to } })
 }
+
+const TABS = ['summary', 'commits'] as const
+const tab = ref<(typeof TABS)[number]>(loadPref('oo.tab', TABS, 'summary'))
+watch(tab, (v) => savePref('oo.tab', v))
 
 readUrl()
 onMounted(() => {
@@ -61,7 +67,23 @@ watch(
     <RangeStats />
     <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <RepoList />
-      <CommitList />
+      <div class="min-w-0 space-y-3">
+        <div class="flex gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
+          <button
+            v-for="t in TABS"
+            :key="t"
+            role="tab"
+            :aria-selected="tab === t"
+            class="-mb-px border-b-2 px-4 py-2 text-sm font-medium"
+            :class="tab === t ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'"
+            @click="tab = t"
+          >
+            {{ t === 'summary' ? 'Summary' : `Commits (${store.commitsInRange.length})` }}
+          </button>
+        </div>
+        <SummaryPanel v-if="tab === 'summary'" />
+        <CommitList v-else />
+      </div>
     </div>
   </div>
 </template>

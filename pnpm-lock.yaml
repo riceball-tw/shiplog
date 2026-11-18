@@ -80,6 +80,9 @@ importers:
       vite:
         specifier: ^7.0.0
         version: 7.3.8(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.5)(lightningcss@1.33.0)
       vue-tsc:
         specifier: ^3.0.0
         version: 3.3.14(typescript@5.9.3)

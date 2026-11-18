@@ -79,14 +79,14 @@ export function parseGitLog(output: string, opts: ParseOptions): Commit[] {
 export async function readCommits(repoPath: string, since: string, opts: Omit<ParseOptions, 'repoId'> & { repoId: string }): Promise<Commit[]> {
   const { stdout } = await run(
     'git',
-    ['log', '--all', '--no-merges', '--date=iso-strict', '--numstat', `--since=${since}`, `--pretty=format:${LOG_FORMAT}`],
+    ['log', '--exclude=refs/stash', '--all', '--no-merges', '--date=iso-strict', '--numstat', `--since=${since}`, `--pretty=format:${LOG_FORMAT}`],
     { cwd: repoPath, maxBuffer: MAX_BUFFER },
   )
   return parseGitLog(stdout, opts)
 }
 
 export async function readAuthors(repoPath: string): Promise<AuthorInfo[]> {
-  const { stdout } = await run('git', ['log', '--all', '--format=%ae%x1f%an'], {
+  const { stdout } = await run('git', ['log', '--exclude=refs/stash', '--all', '--format=%ae%x1f%an'], {
     cwd: repoPath,
     maxBuffer: MAX_BUFFER,
   })
