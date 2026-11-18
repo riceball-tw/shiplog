@@ -1,43 +1,104 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Commit, Repo, ScanResult } from '@one-on-one/shared'
+import { computed, ref, shallowRef } from 'vue'
+import type { Commit, Repo, ScanResult, AppConfig } from '@one-on-one/shared'
 import * as api from '../api'
+import { CATEGORICAL } from '../lib/theme'
+import { DAY, dayEnd, dayStart, presetRange, ymd } from '../lib/dates'
 
-const DAY = 86_400_000
-const iso = (d: Date) => d.toISOString()
-
-export function presetRange(preset: 'twoWeeks' | 'month' | 'threeMonths') {
-  const now = new Date()
-  const to = iso(now)
-  if (preset === 'twoWeeks') return { from: iso(new Date(now.getTime() - 14 * DAY)), to }
-  if (preset === 'month') return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to }
-  return { from: iso(new Date(now.getTime() - 90 * DAY)), to }
+/** Inclusive range in epoch ms: from = local start of day, to = local end of day. */
+export interface Range {
+  from: number
+  to: number
 }
+export type TimedCommit = Commit & { ts: number }
+
+/** Parse config.since: ISO date or "N months ago" style. null if unknown. */
+function parseSince(s: string): number | null {
+  const t = Date.parse(s)
+  if (!Number.isNaN(t)) return t
+  const m = /^(\d+)\s*(day|week|month|year)s?\s+ago$/i.exec(s.trim())
+  if (!m) return null
+  const d = new Date()
+  const n = +m[1]!
+  const unit = m[2]!.toLowerCase()
+  if (unit === 'day') d.setDate(d.getDate() - n)
+  else if (unit === 'week') d.setDate(d.getDate() - 7 * n)
+  else if (unit === 'month') d.setMonth(d.getMonth() - n)
+  else d.setFullYear(d.getFullYear() - n)
+  return d.getTime()
+}
+
+export const commitKey = (c: { repoId: string; hash: string }) => `${c.repoId}:${c.hash}`
 
 export const useAppStore = defineStore('app', () => {
   const repos = ref<Repo[]>([])
-  const commits = ref<Commit[]>([])
+  const config = ref<AppConfig | null>(null)
+  /** ALL commits (fetched once); filtering by range/repos is client-side */
+  const allCommits = shallowRef<Commit[]>([])
   const loading = ref(false)
   const scanning = ref(false)
   const error = ref<string | null>(null)
   const lastScan = ref<ScanResult | null>(null)
-  const range = ref(presetRange('twoWeeks'))
+  const range = ref<Range>(presetRange('twoWeeks')!)
+  const hiddenRepoIds = ref<string[]>([])
+  const selectedKey = ref<string | null>(null)
 
   const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
+  // ---- getters ----
+  /** newest first */
+  const timedCommits = computed<TimedCommit[]>(() =>
+    allCommits.value.map((c) => ({ ...c, ts: Date.parse(c.date) })).sort((a, b) => b.ts - a.ts),
+  )
+  const visibleCommits = computed(() => {
+    const hidden = new Set(hiddenRepoIds.value)
+    return timedCommits.value.filter((c) => !hidden.has(c.repoId))
+  })
+  const commitsInRange = computed(() => {
+    const { from, to } = range.value
+    return visibleCommits.value.filter((c) => c.ts >= from && c.ts <= to)
+  })
+  const sortedRepos = computed(() => [...repos.value].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)))
+  /** stable color per repo (by sorted name/id); slots wrap after 8 repos */
+  const repoColors = computed(() => {
+    const m = new Map<string, { light: string; dark: string }>()
+    sortedRepos.value.forEach((r, i) => {
+      const k = i % CATEGORICAL.light.length
+      m.set(r.id, { light: CATEGORICAL.light[k]!, dark: CATEGORICAL.dark[k]! })
+    })
+    return m
+  })
+  /** repos shown as lanes/series: included and not toggled off */
+  const visibleRepos = computed(() => sortedRepos.value.filter((r) => r.included && !hiddenRepoIds.value.includes(r.id)))
+  const meetings = computed(() => [...(config.value?.meetings ?? [])].sort())
+  /** full history span: config.since / first commit -> end of today */
+  const extent = computed<Range>(() => {
+    const first = timedCommits.value.at(-1)?.ts
+    const since = config.value ? parseSince(config.value.since) : null
+    const candidates = [first, since].filter((x): x is number => x != null)
+    const from = candidates.length ? Math.min(...candidates) : Date.now() - 365 * DAY
+    return { from: dayStart(from), to: dayEnd(Date.now()) }
+  })
+
+  // ---- actions ----
   async function loadRepos() {
     try {
       repos.value = await api.getRepos()
-      error.value = null
     } catch (e) {
       error.value = msg(e)
     }
   }
-
+  async function loadConfig() {
+    try {
+      config.value = await api.getConfig()
+    } catch (e) {
+      error.value = msg(e)
+    }
+  }
   async function loadCommits() {
     loading.value = true
     try {
-      commits.value = await api.getCommits(range.value)
+      allCommits.value = await api.getCommits()
       error.value = null
     } catch (e) {
       error.value = msg(e)
@@ -45,13 +106,15 @@ export const useAppStore = defineStore('app', () => {
       loading.value = false
     }
   }
-
+  async function init() {
+    await Promise.all([loadRepos(), loadConfig(), loadCommits()])
+  }
   async function scan() {
     scanning.value = true
     try {
       lastScan.value = await api.scan()
       error.value = null
-      await Promise.all([loadRepos(), loadCommits()])
+      await init()
     } catch (e) {
       error.value = msg(e)
     } finally {
@@ -59,10 +122,39 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function setRange(r: { from: string; to: string }) {
-    range.value = r
-    await loadCommits()
+  function setRange(r: Range) {
+    const from = Math.min(r.from, r.to)
+    const to = Math.max(r.from, r.to)
+    if (from === range.value.from && to === range.value.to) return
+    range.value = { from, to }
+  }
+  function toggleRepo(id: string) {
+    const i = hiddenRepoIds.value.indexOf(id)
+    if (i >= 0) hiddenRepoIds.value = hiddenRepoIds.value.filter((x) => x !== id)
+    else hiddenRepoIds.value = [...hiddenRepoIds.value, id]
+  }
+  function select(c: { repoId: string; hash: string } | null) {
+    selectedKey.value = c ? commitKey(c) : null
+  }
+  /** Append today's date to config.meetings (fresh GET then PUT; no duplicates). */
+  async function markTodayAsMeeting() {
+    try {
+      const cfg = await api.getConfig()
+      const today = ymd(Date.now())
+      if (!cfg.meetings.includes(today)) {
+        config.value = await api.putConfig({ ...cfg, meetings: [...cfg.meetings, today].sort() })
+      } else {
+        config.value = cfg
+      }
+      error.value = null
+    } catch (e) {
+      error.value = msg(e)
+    }
   }
 
-  return { repos, commits, loading, scanning, error, lastScan, range, loadRepos, loadCommits, scan, setRange }
+  return {
+    repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
+    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, visibleRepos, meetings, extent,
+    loadRepos, loadConfig, loadCommits, init, scan, setRange, toggleRepo, select, markTodayAsMeeting,
+  }
 })

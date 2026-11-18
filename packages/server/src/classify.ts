@@ -5,6 +5,9 @@ const COMMIT_TYPES: readonly CommitType[] = [
 ]
 
 const CC_RE = /^(\w+)(\(([^)]*)\))?(!)?:\s/
+// Subjects git writes itself; branch names inside them would otherwise trip the keyword rules.
+const GIT_REVERT_RE = /^(Revert|Reapply) "/
+const GIT_MERGE_RE = /^Merge (branch|remote-tracking branch|pull request|tag) /
 
 const KEYWORDS: [CommitType, RegExp][] = [
   ['fix', /\b(fix(es|ed)?|bug|hotfix|patch|resolve[sd]?)\b/i],
@@ -58,6 +61,9 @@ export function classify(
     breaking: /^BREAKING[ -]CHANGE/m.test(body),
     confidence: 'low',
   })
+
+  if (GIT_REVERT_RE.test(subject)) return { ...low('revert'), confidence: 'high' }
+  if (GIT_MERGE_RE.test(subject)) return low('other')
 
   for (const [type, sources] of Object.entries(extraKeywords) as [CommitType, string[]][]) {
     for (const src of sources ?? []) {

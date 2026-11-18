@@ -49,12 +49,18 @@ importers:
       '@one-on-one/shared':
         specifier: workspace:*
         version: link:../shared
+      echarts:
+        specifier: ^6.1.0
+        version: 6.1.0
       pinia:
         specifier: ^3.0.0
         version: 3.0.4(typescript@5.9.3)(vue@3.5.45(typescript@5.9.3))
       vue:
         specifier: ^3.5.0
         version: 3.5.45(typescript@5.9.3)
+      vue-echarts:
+        specifier: ^8.3.2
+        version: 8.3.2(echarts@6.1.0)(vue@3.5.45(typescript@5.9.3))
       vue-router:
         specifier: ^4.5.0
         version: 4.6.5(vue@3.5.45(typescript@5.9.3))
@@ -992,6 +998,9 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
+  echarts@6.1.0:
+    resolution: {integrity: sha512-q0yaFPggC9FUdsWH4blavRWFmxdrIodbkoKNAjJudAI6CA9gNPxHtV2RcZNEepZVlk4yvBYkOkbk6HIVpIyHZA==}
+
   enhanced-resolve@5.27.0:
     resolution: {integrity: sha512-Do6BB2xzlcc/odFg+XEYyneAx4T/WfywO71yw9ePS2tVfRsf7JVR4mUeELadIeHzixkzbG5DpluiEFPi2WGfYQ==}
     engines: {node: '>=10.13.0'}
@@ -1331,6 +1340,9 @@ packages:
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
+  tslib@2.3.0:
+    resolution: {integrity: sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==}
+
   tsup@8.5.1:
     resolution: {integrity: sha512-xtgkqwdhpKWr3tKPmCkvYmS9xnQK3m3XgxZHwSUjvfTjp7YfXe5tT3GgWi0F2N+ZSMsOeWeZFh7ZZFg5iPhing==}
     engines: {node: '>=18'}
@@ -1483,6 +1495,12 @@ packages:
   vscode-uri@3.2.0:
     resolution: {integrity: sha512-m2gXo3bn0G1kT9InzMf07fTbqMbGtyckj3bH5ktLO+1Ssv+yiATZ4dhwaQv9UZWxJh6E9IFGnQyjgWVDWVBDrg==}
 
+  vue-echarts@8.3.2:
+    resolution: {integrity: sha512-FbJD49OZZZv1I8aclHQ+gcQxU+Y9nNWQMuod1sewE7/YjGQUJAaeVcf6WrSfQDBRPke+WoVsUtdRFIqPOsRrnw==}
+    peerDependencies:
+      echarts: ^6.0.0
+      vue: ^3.3.0
+
   vue-router@4.6.5:
     resolution: {integrity: sha512-HBoGqixpB2ej1kI17NotdOatUdKIsi3yfOQ5vhwAhcoHk90+JtwtIy7MEeOqdPi1+npmQVMEu5F+Hvw+3TU48w==}
     peerDependencies:
@@ -1506,6 +1524,9 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
+
+  zrender@6.1.0:
+    resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
 
 snapshots:
 
@@ -2129,6 +2150,11 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
+  echarts@6.1.0:
+    dependencies:
+      tslib: 2.3.0
+      zrender: 6.1.0
+
   enhanced-resolve@5.27.0:
     dependencies:
       graceful-fs: 4.2.12
@@ -2479,6 +2505,8 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
+  tslib@2.3.0: {}
+
   tsup@8.5.1(jiti@2.7.0)(postcss@8.5.33)(tsx@4.23.15)(typescript@5.9.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.27.7)
@@ -2610,6 +2638,11 @@ snapshots:
 
   vscode-uri@3.2.0: {}
 
+  vue-echarts@8.3.2(echarts@6.1.0)(vue@3.5.45(typescript@5.9.3)):
+    dependencies:
+      echarts: 6.1.0
+      vue: 3.5.45(typescript@5.9.3)
+
   vue-router@4.6.5(vue@3.5.45(typescript@5.9.3)):
     dependencies:
       '@vue/devtools-api': 6.6.4
@@ -2635,3 +2668,7 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  zrender@6.1.0:
+    dependencies:
+      tslib: 2.3.0

@@ -51,5 +51,6 @@ export const putConfig = (config: AppConfig) =>
 export const getRepos = () => request<Repo[]>('/repos')
 export const getAuthors = (repoId?: string) => request<AuthorInfo[]>(`/authors${qs({ repoId })}`)
 export const scan = () => request<ScanResult>('/scan', { method: 'POST' })
-export const getCommits = (q: RangeQuery) => request<Commit[]>(`/commits${rangeQs(q)}`)
+/** no query = all commits */
+export const getCommits = (q?: Partial<RangeQuery>) => request<Commit[]>(`/commits${q ? rangeQs(q as RangeQuery) : ''}`)
 export const getHeatmap = (q: RangeQuery) => request<HeatmapRow[]>(`/heatmap${rangeQs(q)}`)

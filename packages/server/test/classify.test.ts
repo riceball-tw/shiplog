@@ -11,6 +11,12 @@ describe('classify', () => {
     expect(classify('fix!: drop old field').breaking).toBe(true)
     expect(classify('refactor: x', [], {}, 'BREAKING CHANGE: gone').breaking).toBe(true)
   })
+  it('recognizes git-generated revert and merge subjects', () => {
+    expect(classify(`Revert "Merge branch 'fix/login' into develop"`)).toMatchObject({ type: 'revert', confidence: 'high' })
+    expect(classify(`Reapply "feat: add x"`).type).toBe('revert')
+    expect(classify(`Merge branch 'fix/login' into develop`).type).toBe('other')
+  })
+
   it('treats unknown CC types as unmatched', () => {
     const c = classify('wip: fix the thing')
     expect(c.confidence).toBe('low')
