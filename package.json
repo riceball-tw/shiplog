@@ -1,0 +1,13 @@
+{
+  "name": "one-on-one",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./packages/server --filter ./packages/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @one-on-one/server start",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": { "node": ">=20" }
+}
