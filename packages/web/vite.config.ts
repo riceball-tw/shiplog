@@ -10,5 +10,17 @@ export default defineConfig({
     port: 5173,
     proxy: { '/api': 'http://127.0.0.1:4317' },
   },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // ECharts alone exceeds 500 kB, so split its renderer library (zrender) from the chart code
+          if (id.includes('node_modules/zrender')) return 'zrender'
+          if (id.includes('node_modules/echarts') || id.includes('node_modules/vue-echarts')) return 'echarts'
+        },
+      },
+    },
+  },
 })
