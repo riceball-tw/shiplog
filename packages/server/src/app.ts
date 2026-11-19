@@ -62,8 +62,10 @@ export function createApp({ store, webDist }: AppOptions) {
       }
       for (const a of authors) {
         const prev = merged.get(a.email.toLowerCase())
-        if (prev) prev.commits += a.commits
-        else merged.set(a.email.toLowerCase(), { ...a })
+        if (prev) {
+          prev.commits += a.commits
+          if (a.name && !prev.names!.includes(a.name)) prev.names!.push(a.name)
+        } else merged.set(a.email.toLowerCase(), { ...a, names: a.name ? [a.name] : [] })
       }
     }
     return c.json([...merged.values()].sort((a, b) => b.commits - a.commits))

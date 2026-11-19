@@ -108,6 +108,8 @@ export interface AuthorInfo {
   email: string
   name: string
   commits: number
+  /** all distinct display names seen for this email (aggregated /api/authors) */
+  names?: string[]
 }
 
 export interface HeatmapRow {
