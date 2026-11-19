@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import type { Commit, Repo, ScanResult, AppConfig } from '@one-on-one/shared'
 import * as api from '../api'
-import { CATEGORICAL } from '../lib/theme'
+import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
+import { assignRepoColors } from '../lib/repoColors'
 import { DAY, dayEnd, dayStart, presetRange, ymd } from '../lib/dates'
 
 /** Inclusive range in epoch ms: from = local start of day, to = local end of day. */
@@ -59,15 +60,29 @@ export const useAppStore = defineStore('app', () => {
     return visibleCommits.value.filter((c) => c.ts >= from && c.ts <= to)
   })
   const sortedRepos = computed(() => [...repos.value].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)))
-  /** stable color per repo (by sorted name/id); slots wrap after 8 repos */
-  const repoColors = computed(() => {
-    const m = new Map<string, { light: string; dark: string }>()
-    sortedRepos.value.forEach((r, i) => {
-      const k = i % CATEGORICAL.light.length
-      m.set(r.id, { light: CATEGORICAL.light[k]!, dark: CATEGORICAL.dark[k]! })
-    })
+  /** commit totals over ALL loaded commits (not the range) so colors stay stable while dragging */
+  const commitCounts = computed(() => {
+    const m = new Map<string, number>()
+    for (const c of allCommits.value) m.set(c.repoId, (m.get(c.repoId) ?? 0) + 1)
     return m
   })
+  /** top 8 included repos by total commits get categorical colors; the rest share a neutral "Other" */
+  const colorAssignment = computed(() =>
+    assignRepoColors(
+      sortedRepos.value.filter((r) => r.included),
+      commitCounts.value,
+      CATEGORICAL,
+      OTHER_COLOR,
+    ),
+  )
+  /** color per repo id (non-top repos get the neutral Other color) */
+  const repoColors = computed(() => {
+    const m = new Map(colorAssignment.value.colors)
+    for (const r of sortedRepos.value) if (!m.has(r.id)) m.set(r.id, OTHER_COLOR)
+    return m
+  })
+  const topRepoIds = computed(() => colorAssignment.value.topRepoIds)
+  const isOther = (id: string) => colorAssignment.value.isOther(id)
   /** repos shown as lanes/series: included and not toggled off */
   const visibleRepos = computed(() => sortedRepos.value.filter((r) => r.included && !hiddenRepoIds.value.includes(r.id)))
   const meetings = computed(() => [...(config.value?.meetings ?? [])].sort())
@@ -169,7 +184,7 @@ export const useAppStore = defineStore('app', () => {
 
   return {
     repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
-    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, visibleRepos, meetings, extent,
+    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, meetings, extent,
     loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, select, markTodayAsMeeting,
   }
 })

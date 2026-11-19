@@ -35,6 +35,7 @@ const tooltipBase = (t: ChartTheme) => ({
   confine: true,
 })
 
+const OTHER_SERIES = '__other__'
 export const WEEKLY_THRESHOLD_DAYS = 120
 
 // ---------------------------------------------------------------- overview
@@ -44,6 +45,9 @@ export interface OverviewArgs {
   /** visible repos, in legend order */
   repos: Repo[]
   colors: Map<string, string>
+  /** repos with their own series, in rank order; all other repos merge into "Other" */
+  topRepoIds: string[]
+  otherColor: string
   extent: Range
   meetings: string[]
   theme: ChartTheme
@@ -69,22 +73,46 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
   const buckets: number[] = []
   for (let b = bucketOf(extent.from); b <= extent.to; b = bucketOf(b + 3 * half)) buckets.push(b)
 
-  const bars = a.repos.map((r) => ({
+  const topSet = new Set(a.topRepoIds)
+  const topRepos = a.repos.filter((r) => topSet.has(r.id))
+  const otherIds = a.repos.filter((r) => !topSet.has(r.id)).map((r) => r.id)
+  const barBase = {
     type: 'bar' as const,
-    name: r.name,
     stack: 'commits',
     xAxisIndex: 0,
     yAxisIndex: 0,
     barMaxWidth: 14,
     barMinWidth: 2,
-    itemStyle: { color: a.colors.get(r.id), borderColor: t.surface, borderWidth: 1 },
     emphasis: { focus: 'none' as const },
-    // [bar center, count, bucket start]; zero buckets drop the border so they don't draw a hairline
-    data: buckets.map((b) => {
-      const n = counts.get(r.id)?.get(b) ?? 0
-      return n ? [b + half, n, b] : { value: [b + half, 0, b], itemStyle: { borderWidth: 0 } }
-    }),
+  }
+  // [bar center, count, bucket start, extra]; zero buckets drop the border so they don't draw a hairline
+  const cell = (b: number, n: number, extra = 0) =>
+    n ? [b + half, n, b, extra] : { value: [b + half, 0, b, 0], itemStyle: { borderWidth: 0 } }
+  const bars = topRepos.map((r) => ({
+    ...barBase,
+    name: r.name,
+    itemStyle: { color: a.colors.get(r.id), borderColor: t.surface, borderWidth: 1 },
+    data: buckets.map((b) => cell(b, counts.get(r.id)?.get(b) ?? 0)),
   }))
+  // single merged "Other" series, stacked last (on top) in a neutral color
+  const otherBar = otherIds.length
+    ? [
+        {
+          ...barBase,
+          name: OTHER_SERIES,
+          itemStyle: { color: a.otherColor, borderColor: t.surface, borderWidth: 1 },
+          data: buckets.map((b) => {
+            let n = 0
+            let repos = 0
+            for (const id of otherIds) {
+              const k = counts.get(id)?.get(b) ?? 0
+              if (k) { n += k; repos++ }
+            }
+            return cell(b, n, repos)
+          }),
+        },
+      ]
+    : []
 
   const meetingLines = a.meetings
     .map(parseYmd)
@@ -126,12 +154,18 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
         const bucket = ps.filter((p) => p.value[2] === start)
         const total = bucket.reduce((s, p) => s + p.value[1], 0)
         const title = weekly ? `Week of ${fmtLong(start)}` : fmtLong(start)
-        const rows = bucket.map((p) => `<div>${dot(p.color)}${esc(p.seriesName)}: <b>${p.value[1]}</b></div>`).join('')
+        const rows = bucket
+          .map((p) => {
+            const label = p.seriesName === OTHER_SERIES ? `Other (${p.value[3]} repo${p.value[3] === 1 ? '' : 's'})` : esc(p.seriesName)
+            return `<div>${dot(p.color)}${label}: <b>${p.value[1]}</b></div>`
+          })
+          .join('')
         return `<div style="font-weight:600;margin-bottom:4px">${title}</div>${rows}<div style="margin-top:4px;color:${t.textMuted}">${total} commits</div>`
       },
     },
     series: [
       ...bars,
+      ...otherBar,
       {
         // 1:1 meeting markers
         type: 'line',

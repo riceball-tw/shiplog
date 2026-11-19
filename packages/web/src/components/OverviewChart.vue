@@ -4,7 +4,7 @@ import VChart from 'vue-echarts'
 import '../lib/echartsSetup'
 import { useAppStore } from '../stores/app'
 import { buildOverviewOption, chartTheme, OVERVIEW_HEIGHT } from '../lib/charts'
-import { prefersDark } from '../lib/theme'
+import { OTHER_COLOR, prefersDark } from '../lib/theme'
 import { useRangeSync } from '../lib/useRangeSync'
 
 const store = useAppStore()
@@ -18,6 +18,8 @@ const option = computed(() => {
     commits: store.visibleCommits,
     repos: store.visibleRepos,
     colors,
+    topRepoIds: store.topRepoIds,
+    otherColor: prefersDark.value ? OTHER_COLOR.dark : OTHER_COLOR.light,
     extent: store.extent,
     meetings: store.meetings,
     theme: chartTheme(prefersDark.value),
