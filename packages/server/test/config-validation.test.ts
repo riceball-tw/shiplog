@@ -11,7 +11,7 @@ const dir = path.join(tmp, 'dir')
 const file = path.join(tmp, 'file.txt')
 
 describe('PUT /api/config validation', () => {
-  const { app } = createApp({ store: new MemoryCommitStore() })
+  const { app } = createApp({ store: new MemoryCommitStore(), allowMissingHost: true })
   const put = (body: unknown) =>
     app.request('/api/config', { method: 'PUT', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
 

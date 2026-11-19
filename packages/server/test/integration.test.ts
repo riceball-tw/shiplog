@@ -64,7 +64,7 @@ describe('discovery + scan', () => {
 
   it('scans via the API, dedupes clones, filters authors', async () => {
     const store = new MemoryCommitStore()
-    const { app } = createApp({ store })
+    const { app } = createApp({ store, allowMissingHost: true })
     const res = await app.request('/api/scan', { method: 'POST' })
     const result = await res.json()
     expect(result.repos).toBe(3)
@@ -95,7 +95,7 @@ describe('discovery + scan', () => {
   it('a broken repo does not fail the scan', async () => {
     const broken = path.join(root, 'broken')
     mkdirSync(path.join(broken, '.git'), { recursive: true })
-    const { app } = createApp({ store: new MemoryCommitStore() })
+    const { app } = createApp({ store: new MemoryCommitStore(), allowMissingHost: true })
     const result = await (await app.request('/api/scan', { method: 'POST' })).json()
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0].repoPath).toBe(broken)
@@ -103,7 +103,7 @@ describe('discovery + scan', () => {
   })
 
   it('serves health and config', async () => {
-    const { app } = createApp({ store: new MemoryCommitStore() })
+    const { app } = createApp({ store: new MemoryCommitStore(), allowMissingHost: true })
     expect(await (await app.request('/api/health')).json()).toEqual({ ok: true })
     const cfg = await (await app.request('/api/config')).json()
     expect(cfg.scanRoots).toEqual([root])

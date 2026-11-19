@@ -103,6 +103,7 @@ export interface ScanResult {
 // POST /api/scan                           -> ScanResult
 // GET  /api/commits?from=&to=&repos=a,b    -> Commit[]  (from/to ISO dates, inclusive; repos optional)
 // GET  /api/heatmap?from=&to=&repos=       -> HeatmapRow[]
+// All /api/* requests must carry a loopback Host header (127.0.0.1 / localhost, any port), else 403.
 
 export interface AuthorInfo {
   email: string

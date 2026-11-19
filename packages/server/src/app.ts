@@ -13,10 +13,25 @@ export interface AppOptions {
   store: CommitStore
   /** directory with the built web app; served when it exists */
   webDist?: string
+  /** accept requests without a Host header (tests via app.request); real HTTP clients always send one */
+  allowMissingHost?: boolean
 }
 
-export function createApp({ store, webDist }: AppOptions) {
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
+
+/** DNS-rebinding defense: only loopback host names, any port. */
+export function isLocalHost(host: string | undefined, allowMissing = false): boolean {
+  if (!host) return allowMissing
+  const m = /^(\[[^\]]+\]|[^:]+)(?::\d{1,5})?$/.exec(host.trim().toLowerCase())
+  return !!m && LOCAL_HOSTS.has(m[1]!)
+}
+
+export function createApp({ store, webDist, allowMissingHost }: AppOptions) {
   const app = new Hono()
+  app.use('/api/*', async (c, next) => {
+    if (!isLocalHost(c.req.header('host'), allowMissingHost)) return c.json({ error: 'forbidden host' }, 403)
+    await next()
+  })
   let repos: Repo[] | null = null
   let scanning: Promise<ScanResult> | null = null
 
