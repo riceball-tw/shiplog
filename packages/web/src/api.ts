@@ -1,7 +1,7 @@
-import type { AppConfig, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@one-on-one/shared'
+import type { AppConfig, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@one-on-one/shared'
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(message: string, public status: number, public details: string[] = []) {
     super(message)
   }
 }
@@ -17,6 +17,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError('Server not reachable on :4317 — run pnpm dev', 0)
   }
   if (!res.ok) {
+    if (res.status === 400) {
+      try {
+        const body = (await res.json()) as Partial<ConfigError>
+        if (Array.isArray(body.details)) throw new ApiError(body.error ?? 'invalid request', 400, body.details)
+      } catch (e) {
+        if (e instanceof ApiError) throw e
+      }
+    }
     let detail = ''
     try {
       detail = (await res.text()).slice(0, 300)

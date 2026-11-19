@@ -122,6 +122,21 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  /** Persist config (throws ApiError with .details on 400), rescan, then reload repos/config/commits. */
+  async function saveConfigAndRescan(next: AppConfig): Promise<ScanResult> {
+    config.value = await api.putConfig(next)
+    scanning.value = true
+    try {
+      const result = await api.scan()
+      lastScan.value = result
+      error.value = null
+      await init()
+      return result
+    } finally {
+      scanning.value = false
+    }
+  }
+
   function setRange(r: Range) {
     const from = Math.min(r.from, r.to)
     const to = Math.max(r.from, r.to)
@@ -155,6 +170,6 @@ export const useAppStore = defineStore('app', () => {
   return {
     repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
     timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, visibleRepos, meetings, extent,
-    loadRepos, loadConfig, loadCommits, init, scan, setRange, toggleRepo, select, markTodayAsMeeting,
+    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, select, markTodayAsMeeting,
   }
 })
