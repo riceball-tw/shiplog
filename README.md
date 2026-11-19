@@ -1,4 +1,4 @@
-# one-on-one
+# shiplog
 
 A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus one swimlane per repo. A summary panel groups the commits in the selected range by type or ticket and exports a Markdown pitch you can paste into your notes.
 
@@ -31,7 +31,7 @@ Open the **Settings** page:
 
 ## Configuration
 
-Settings are stored in `~/.one-on-one/config.json`. Set `ONE_ON_ONE_HOME` to use a different directory (the file is then `$ONE_ON_ONE_HOME/config.json`). The Settings page edits this file; you can also edit it by hand. `~` is expanded in paths.
+Settings are stored in `~/.shiplog/config.json`. Set `SHIPLOG_HOME` to use a different directory (the file is then `$SHIPLOG_HOME/config.json`). If you ran it under its old name, `~/.one-on-one/config.json` is copied over on first start. The Settings page edits this file; you can also edit it by hand. `~` is expanded in paths.
 
 | Field | Meaning | Default |
 | --- | --- | --- |

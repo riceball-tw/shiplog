@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Classification, CommitType } from '@one-on-one/shared'
+import type { Classification, CommitType } from '@shiplog/shared'
 import { COMMIT_TYPE_COLORS } from '../lib/commitTypes'
 import { Badge } from '@/components/ui/badge'
 

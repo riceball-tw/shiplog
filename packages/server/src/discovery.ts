@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { AppConfig, Repo } from '@one-on-one/shared'
+import type { AppConfig, Repo } from '@shiplog/shared'
 
 export function repoId(absPath: string): string {
   return createHash('sha1').update(absPath).digest('hex').slice(0, 12)

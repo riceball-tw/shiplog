@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { CommitType } from '@one-on-one/shared'
+import type { CommitType } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
 import { fmtShort, rangeLabel } from '../lib/dates'
 import { loadPref, savePref } from '../lib/prefs'

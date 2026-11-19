@@ -13,7 +13,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.19(hono@4.13.19)
-      '@one-on-one/shared':
+      '@shiplog/shared':
         specifier: workspace:*
         version: link:../shared
       hono:
@@ -49,7 +49,7 @@ importers:
       '@lucide/vue':
         specifier: ^1.76.0
         version: 1.76.0(vue@3.5.45(typescript@5.9.3))
-      '@one-on-one/shared':
+      '@shiplog/shared':
         specifier: workspace:*
         version: link:../shared
       '@vueuse/core':

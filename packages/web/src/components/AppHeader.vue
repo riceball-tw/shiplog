@@ -33,7 +33,7 @@ function toggleSidebar() {
       </TooltipTrigger>
       <TooltipContent side="bottom">{{ sidebarShown ? 'Hide' : 'Show' }} repos &amp; data source</TooltipContent>
     </Tooltip>
-    <RouterLink to="/" class="text-sm font-semibold tracking-tight">One-on-One</RouterLink>
+    <RouterLink to="/" class="text-sm font-semibold tracking-tight">Shiplog</RouterLink>
 
     <div class="ml-auto flex items-center gap-2 text-sm">
       <span v-if="result" class="hidden text-xs text-muted-foreground md:inline">

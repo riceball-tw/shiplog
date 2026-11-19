@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type { AppConfig, AuthorInfo, ScanResult } from '@one-on-one/shared'
+import type { AppConfig, AuthorInfo, ScanResult } from '@shiplog/shared'
 import * as api from '../../api'
 import FolderPicker from '../FolderPicker.vue'
 import SettingsSection from '../SettingsSection.vue'

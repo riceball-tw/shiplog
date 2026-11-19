@@ -1,4 +1,4 @@
-import type { Classification, CommitType } from '@one-on-one/shared'
+import type { Classification, CommitType } from '@shiplog/shared'
 
 const COMMIT_TYPES: readonly CommitType[] = [
   'feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'ci', 'build', 'chore', 'style', 'revert', 'other',

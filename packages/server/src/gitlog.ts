@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import picomatch from 'picomatch'
-import type { AuthorInfo, Commit, FileChange } from '@one-on-one/shared'
+import type { AuthorInfo, Commit, FileChange } from '@shiplog/shared'
 import { classify, parseRefs } from './classify.js'
 
 const run = promisify(execFile)

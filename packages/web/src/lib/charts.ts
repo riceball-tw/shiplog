@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts'
-import type { Repo } from '@one-on-one/shared'
+import type { Repo } from '@shiplog/shared'
 import type { Range, TimedCommit } from '../stores/app'
 import { COMMIT_TYPE_COLORS } from './commitTypes'
 import { DAY, dayStart, fmtLong, weekStart } from './dates'

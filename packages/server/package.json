@@ -1,5 +1,5 @@
 {
-  "name": "@one-on-one/server",
+  "name": "@shiplog/server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "@one-on-one/shared": "workspace:*",
+    "@shiplog/shared": "workspace:*",
     "hono": "^4.6.0",
     "picomatch": "^4.0.2"
   },

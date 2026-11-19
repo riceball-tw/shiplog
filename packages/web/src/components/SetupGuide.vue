@@ -37,7 +37,7 @@ const steps = computed(() => [
   <div class="mx-auto max-w-xl py-8 sm:py-16" data-testid="setup-guide">
     <h1 class="text-xl font-semibold tracking-tight">Set up your timeline</h1>
     <p class="mt-1 text-sm text-muted-foreground">
-      One-on-One reads the git history on this machine and keeps only your commits, so you can see what you shipped before a 1:1.
+      Shiplog reads the git history on this machine and keeps only your commits, so you can see what you shipped before a 1:1.
     </p>
 
     <ol class="mt-6 divide-y rounded-xl border bg-card">
@@ -63,7 +63,7 @@ const steps = computed(() => [
       </li>
     </ol>
     <p class="mt-4 text-xs text-muted-foreground">
-      Nothing leaves your machine. Settings are stored in <span class="font-mono">~/.one-on-one/config.json</span>.
+      Nothing leaves your machine. Settings are stored in <span class="font-mono">~/.shiplog/config.json</span>.
     </p>
   </div>
 </template>

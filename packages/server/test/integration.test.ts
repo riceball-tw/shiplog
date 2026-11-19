@@ -36,7 +36,7 @@ describe('discovery + scan', () => {
   const beta = path.join(root, 'beta')
 
   beforeAll(async () => {
-    process.env.ONE_ON_ONE_HOME = path.join(tmp, 'home')
+    process.env.SHIPLOG_HOME = path.join(tmp, 'home')
     mkdirSync(alpha, { recursive: true })
     git(alpha, ['init', '-q'])
     commit(alpha, 'a.ts', 'one\n', 'feat(core): add a ABC-1 (!3)')

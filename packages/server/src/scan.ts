@@ -1,4 +1,4 @@
-import type { AppConfig, Commit, Repo, ScanResult } from '@one-on-one/shared'
+import type { AppConfig, Commit, Repo, ScanResult } from '@shiplog/shared'
 import { discoverRepos } from './discovery.js'
 import { readCommits } from './gitlog.js'
 import type { CommitStore } from './store.js'

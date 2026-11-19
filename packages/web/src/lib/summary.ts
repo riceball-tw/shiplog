@@ -1,4 +1,4 @@
-import type { Commit, CommitType } from '@one-on-one/shared'
+import type { Commit, CommitType } from '@shiplog/shared'
 import { ymd } from './dates'
 
 export const TYPE_ORDER: CommitType[] = ['feat', 'fix', 'perf', 'refactor', 'test', 'docs', 'revert', 'build', 'ci', 'chore', 'style', 'other']

@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import type { AppConfig } from '@one-on-one/shared'
+import type { AppConfig } from '@shiplog/shared'
 
 /**
  * Settings form state at module level, so an unsaved draft survives closing and reopening the

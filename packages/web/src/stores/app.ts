@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import type { Commit, Repo, ScanResult, AppConfig } from '@one-on-one/shared'
+import type { Commit, Repo, ScanResult, AppConfig } from '@shiplog/shared'
 import * as api from '../api'
 import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
 import { assignRepoColors } from '../lib/repoColors'

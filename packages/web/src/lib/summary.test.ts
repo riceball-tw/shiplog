@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Commit, CommitType } from '@one-on-one/shared'
+import type { Commit, CommitType } from '@shiplog/shared'
 import { cleanSubject, dirOf, summarize, toMarkdown } from './summary'
 
 let n = 0

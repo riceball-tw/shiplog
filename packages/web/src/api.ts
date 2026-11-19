@@ -1,4 +1,4 @@
-import type { AppConfig, DirListing, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@one-on-one/shared'
+import type { AppConfig, DirListing, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@shiplog/shared'
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public details: string[] = []) {

@@ -14,7 +14,7 @@ const { app, runScan } = createApp({
 })
 
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port }, (info) => {
-  console.log(`one-on-one server listening on http://127.0.0.1:${info.port}`)
+  console.log(`shiplog server listening on http://127.0.0.1:${info.port}`)
   console.log(`config: ${configPath()}`)
   runScan()
     .then((r) => console.log(`initial scan: ${r.repos} repos, ${r.newCommits} commits, ${r.errors.length} errors`))

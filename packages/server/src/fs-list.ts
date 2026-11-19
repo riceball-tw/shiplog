@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { DirEntry, DirListing } from '@one-on-one/shared'
+import type { DirEntry, DirListing } from '@shiplog/shared'
 import { expandHome } from './config.js'
 
 const MAX_ENTRIES = 2000

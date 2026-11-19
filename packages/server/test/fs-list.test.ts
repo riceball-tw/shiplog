@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { DirListing } from '@one-on-one/shared'
+import type { DirListing } from '@shiplog/shared'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { MemoryCommitStore } from '../src/store.js'

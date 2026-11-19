@@ -1,4 +1,4 @@
-import type { Commit, HeatmapRow } from '@one-on-one/shared'
+import type { Commit, HeatmapRow } from '@shiplog/shared'
 
 export interface CommitQuery {
   from?: string

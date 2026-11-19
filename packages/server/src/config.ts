@@ -3,16 +3,30 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
-import type { AppConfig } from '@one-on-one/shared'
+import type { AppConfig } from '@shiplog/shared'
 
 const run = promisify(execFile)
 
 export function homeDir(): string {
-  return process.env.ONE_ON_ONE_HOME ?? path.join(os.homedir(), '.one-on-one')
+  return process.env.SHIPLOG_HOME ?? path.join(os.homedir(), '.shiplog')
 }
 
 export function configPath(): string {
   return path.join(homeDir(), 'config.json')
+}
+
+/**
+ * The app used to be called one-on-one and kept its config in ~/.one-on-one. When the default
+ * home has no config yet, carry that one over (the old file is left in place).
+ */
+async function readLegacyConfig(): Promise<AppConfig | null> {
+  if (process.env.SHIPLOG_HOME) return null
+  try {
+    const raw = await fs.readFile(path.join(os.homedir(), '.one-on-one', 'config.json'), 'utf8')
+    return normalizeConfig(JSON.parse(raw) as Partial<AppConfig>)
+  } catch {
+    return null
+  }
 }
 
 export function expandHome(p: string): string {
@@ -84,6 +98,8 @@ export async function loadConfig(): Promise<AppConfig> {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
   }
+  const legacy = await readLegacyConfig()
+  if (legacy) return saveConfig(legacy)
   const config = defaultConfig()
   const email = await globalGitEmail()
   if (email) config.authorEmails = [email]

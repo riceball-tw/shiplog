@@ -16,7 +16,7 @@ describe('PUT /api/config validation', () => {
     app.request('/api/config', { method: 'PUT', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } })
 
   beforeAll(() => {
-    process.env.ONE_ON_ONE_HOME = path.join(tmp, 'home')
+    process.env.SHIPLOG_HOME = path.join(tmp, 'home')
     mkdirSync(dir)
     writeFileSync(file, 'x')
   })

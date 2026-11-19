@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { DirListing } from '@one-on-one/shared'
+import type { DirListing } from '@shiplog/shared'
 import * as api from '../api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'

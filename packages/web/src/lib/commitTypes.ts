@@ -1,4 +1,4 @@
-import type { CommitType } from '@one-on-one/shared'
+import type { CommitType } from '@shiplog/shared'
 
 /** Single source of truth for commit type colors (reused by the timeline). */
 export const COMMIT_TYPE_COLORS: Record<CommitType, { hex: string; badge: string }> = {

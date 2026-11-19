@@ -1,5 +1,5 @@
 {
-  "name": "@one-on-one/web",
+  "name": "@shiplog/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.76.0",
-    "@one-on-one/shared": "workspace:*",
+    "@shiplog/shared": "workspace:*",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
