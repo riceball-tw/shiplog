@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import type { AppConfig, AuthorInfo, ScanResult } from '@one-on-one/shared'
 import * as api from '../api'
+import FolderPicker from '../components/FolderPicker.vue'
 import SettingsSection from '../components/SettingsSection.vue'
 import { useAppStore } from '../stores/app'
 
@@ -28,6 +29,11 @@ const newRoot = ref('')
 const newPinned = ref('')
 const newEmail = ref('')
 const newMeeting = ref('')
+const picker = ref<{ key: 'scanRoots' | 'pinnedRepos'; initial: string } | null>(null)
+function onPicked(p: string) {
+  if (picker.value) addTo(picker.value.key, p)
+  picker.value = null
+}
 
 const saving = ref(false)
 const errorMsg = ref('')
@@ -172,6 +178,7 @@ function discard() {
       </ul>
       <form class="flex gap-2" @submit.prevent="addTo('scanRoots', newRoot); newRoot = ''">
         <input v-model="newRoot" :class="[input, 'flex-1 font-mono']" placeholder="~/code" aria-label="Scan folder path" />
+        <button type="button" :class="btn" @click="picker = { key: 'scanRoots', initial: newRoot }">Browse…</button>
         <button type="submit" :class="btn">Add</button>
       </form>
     </SettingsSection>
@@ -237,6 +244,7 @@ function discard() {
         </ul>
         <form class="mt-2 flex gap-2" @submit.prevent="addTo('pinnedRepos', newPinned); newPinned = ''">
           <input v-model="newPinned" :class="[input, 'flex-1 font-mono']" placeholder="/path/to/repo" aria-label="Pin repo path" />
+          <button type="button" :class="btn" @click="picker = { key: 'pinnedRepos', initial: newPinned }">Browse…</button>
           <button type="submit" :class="btn">Pin</button>
         </form>
       </div>
@@ -310,6 +318,13 @@ function discard() {
         <li v-for="e in result.errors" :key="e.repoPath"><span class="font-mono">{{ e.repoPath }}</span>: {{ e.message }}</li>
       </ul>
     </div>
+
+    <FolderPicker
+      v-if="picker"
+      :title="picker.key === 'scanRoots' ? 'Choose a scan folder' : 'Choose a repo to pin'"
+      :initial-path="picker.initial"
+      @select="onPicked" @close="picker = null"
+    />
 
     <div class="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
       <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 text-sm">

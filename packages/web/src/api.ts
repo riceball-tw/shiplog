@@ -1,4 +1,4 @@
-import type { AppConfig, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@one-on-one/shared'
+import type { AppConfig, DirListing, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@one-on-one/shared'
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public details: string[] = []) {
@@ -62,3 +62,4 @@ export const scan = () => request<ScanResult>('/scan', { method: 'POST' })
 /** no query = all commits */
 export const getCommits = (q?: Partial<RangeQuery>) => request<Commit[]>(`/commits${q ? rangeQs(q as RangeQuery) : ''}`)
 export const getHeatmap = (q: RangeQuery) => request<HeatmapRow[]>(`/heatmap${rangeQs(q)}`)
+export const listDir = (path?: string) => request<DirListing>(`/fs/list${qs({ path })}`)
