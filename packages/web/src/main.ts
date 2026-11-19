@@ -9,7 +9,9 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: HomeView },
-    { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    // settings is a sheet over the timeline now; keep the old deep link working
+    { path: '/settings', redirect: (to) => ({ path: '/', query: { ...to.query, settings: '1' } }) },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 

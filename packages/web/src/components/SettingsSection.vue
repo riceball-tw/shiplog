@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-
-defineProps<{ title: string; hint?: string }>()
+defineProps<{ id: string; title: string; hint?: string }>()
 </script>
 
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-base">{{ title }}</CardTitle>
-      <CardDescription v-if="hint">{{ hint }}</CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-3"><slot /></CardContent>
-  </Card>
+  <section :id="id" class="scroll-mt-2 space-y-3 px-5 py-5" :aria-labelledby="id + '-title'">
+    <header>
+      <h3 :id="id + '-title'" class="text-sm font-semibold">{{ title }}</h3>
+      <p v-if="hint" class="mt-0.5 text-xs text-muted-foreground">{{ hint }}</p>
+    </header>
+    <slot />
+  </section>
 </template>
