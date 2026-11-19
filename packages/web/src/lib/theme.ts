@@ -3,7 +3,16 @@ import { ref } from 'vue'
 const mq = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
 /** reactive prefers-color-scheme: dark */
 export const prefersDark = ref(mq?.matches ?? false)
-mq?.addEventListener('change', (e) => (prefersDark.value = e.matches))
+
+/** shadcn uses a `.dark` class on <html>; mirror the OS preference onto it. */
+function applyDark(dark: boolean) {
+  if (typeof document !== 'undefined') document.documentElement.classList.toggle('dark', dark)
+}
+applyDark(prefersDark.value) // runs at import time, before mount -> no flash
+mq?.addEventListener('change', (e) => {
+  prefersDark.value = e.matches
+  applyDark(e.matches)
+})
 
 /** Categorical palette (dataviz reference palette, fixed order, validated in both modes). */
 export const CATEGORICAL = {
