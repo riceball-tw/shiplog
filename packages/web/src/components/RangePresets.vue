@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Button } from '@/components/ui/button'
 import { useAppStore } from '../stores/app'
 import { type PresetKey, presetRange, ymd } from '../lib/dates'
 
@@ -32,26 +33,24 @@ function pick(key: PresetKey) {
 
 <template>
   <div class="flex flex-wrap items-center gap-2">
-    <button
+    <Button
       v-for="p in presets"
       :key="p.key"
-      class="rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-      :class="active === p.key
-        ? 'border-indigo-600 bg-indigo-600 text-white'
-        : 'border-slate-300 bg-white hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'"
+      :variant="active === p.key ? 'default' : 'outline'"
       :disabled="!ranges.get(p.key)"
       :title="!ranges.get(p.key) ? 'No past 1:1 meetings recorded yet' : undefined"
       @click="pick(p.key)"
     >
       {{ p.label }}
-    </button>
-    <button
-      class="ml-auto rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+    </Button>
+    <Button
+      variant="outline"
+      class="ml-auto"
       :disabled="marked"
       :title="marked ? `${today} is already marked` : `Add ${today} to your 1:1 meeting dates`"
       @click="store.markTodayAsMeeting()"
     >
       {{ marked ? 'Today marked as 1:1' : 'Mark today as 1:1' }}
-    </button>
+    </Button>
   </div>
 </template>

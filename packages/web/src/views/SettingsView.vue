@@ -5,14 +5,22 @@ import * as api from '../api'
 import FolderPicker from '../components/FolderPicker.vue'
 import SettingsSection from '../components/SettingsSection.vue'
 import { useAppStore } from '../stores/app'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { ChevronDown, X } from '@lucide/vue'
 
 const store = useAppStore()
 
-const input =
-  'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950'
-const btn =
-  'rounded-md border border-slate-300 px-2.5 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 disabled:opacity-50'
-const rm = 'text-sm text-red-600 hover:underline dark:text-red-400'
+const rm = 'ml-auto h-auto px-1 py-0 text-destructive'
+const advancedOpen = ref(false)
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 
@@ -162,7 +170,7 @@ function discard() {
 </script>
 
 <template>
-  <div v-if="!draft" class="text-sm text-slate-500">
+  <div v-if="!draft" class="text-sm text-muted-foreground">
     {{ store.error ?? 'Loading settings…' }}
   </div>
   <div v-else class="space-y-4 pb-24">
@@ -172,14 +180,14 @@ function discard() {
       <ul class="space-y-1">
         <li v-for="p in draft.scanRoots" :key="p" class="flex items-center gap-3 font-mono text-sm">
           <span class="truncate">{{ p }}</span>
-          <button :class="[rm, 'ml-auto']" @click="removeFrom('scanRoots', p)">Remove</button>
+          <Button variant="ghost" size="xs" :class="rm" @click="removeFrom('scanRoots', p)">Remove</Button>
         </li>
-        <li v-if="!draft.scanRoots.length" class="text-sm text-slate-500">No folders yet.</li>
+        <li v-if="!draft.scanRoots.length" class="text-sm text-muted-foreground">No folders yet.</li>
       </ul>
       <form class="flex gap-2" @submit.prevent="addTo('scanRoots', newRoot); newRoot = ''">
-        <input v-model="newRoot" :class="[input, 'flex-1 font-mono']" placeholder="~/code" aria-label="Scan folder path" />
-        <button type="button" :class="btn" @click="picker = { key: 'scanRoots', initial: newRoot }">Browse…</button>
-        <button type="submit" :class="btn">Add</button>
+        <Input v-model="newRoot" class="flex-1 font-mono" placeholder="~/code" aria-label="Scan folder path" />
+        <Button type="button" variant="outline" @click="picker = { key: 'scanRoots', initial: newRoot }">Browse…</Button>
+        <Button type="submit" variant="outline">Add</Button>
       </form>
     </SettingsSection>
 
@@ -187,77 +195,81 @@ function discard() {
       <ul class="flex flex-wrap gap-2">
         <li
           v-for="e in draft.authorEmails" :key="e"
-          class="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-sm text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-        >
-          {{ e }}
-          <button class="hover:text-red-600" :aria-label="`Remove ${e}`" @click="removeFrom('authorEmails', e)">×</button>
+          >
+          <Badge variant="secondary" class="h-6 gap-1.5 px-2.5 text-sm">
+            {{ e }}
+            <button class="hover:text-destructive" :aria-label="`Remove ${e}`" @click="removeFrom('authorEmails', e)"><X class="size-3" /></button>
+          </Badge>
         </li>
         <li v-if="!draft.authorEmails.length" class="text-sm text-amber-600 dark:text-amber-400">
           No emails set: no commits will match.
         </li>
       </ul>
       <form class="flex gap-2" @submit.prevent="addEmail">
-        <input v-model="newEmail" type="text" :class="[input, 'flex-1']" placeholder="you@example.com" aria-label="Add email" />
-        <button type="submit" :class="btn">Add</button>
+        <Input v-model="newEmail" type="text" class="flex-1" placeholder="you@example.com" aria-label="Add email" />
+        <Button type="submit" variant="outline">Add</Button>
       </form>
       <div>
         <h3 class="mb-1 text-sm font-medium">Detected authors</h3>
-        <p v-if="authorsLoading" class="text-sm text-slate-500">Reading git history…</p>
-        <p v-else-if="!authors.length" class="text-sm text-slate-500">No authors found (add a scan folder first).</p>
-        <ul v-else class="max-h-64 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+        <p v-if="authorsLoading" class="text-sm text-muted-foreground">Reading git history…</p>
+        <p v-else-if="!authors.length" class="text-sm text-muted-foreground">No authors found (add a scan folder first).</p>
+        <ul v-else class="max-h-64 divide-y overflow-auto rounded-md border">
           <li
             v-for="a in authors" :key="a.email"
             class="flex items-center gap-3 px-3 py-1.5 text-sm"
-            :class="hasEmail(a.email) ? 'bg-indigo-50/70 dark:bg-indigo-950/40' : ''"
+            :class="hasEmail(a.email) ? 'bg-accent' : ''"
           >
             <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-              <input type="checkbox" :checked="hasEmail(a.email)" @change="toggleEmail(a.email)" />
+              <Checkbox :model-value="hasEmail(a.email)" @update:model-value="toggleEmail(a.email)" />
               <span class="truncate font-medium">{{ a.email }}</span>
-              <span class="truncate text-slate-500 dark:text-slate-400">{{ (a.names?.length ? a.names : [a.name]).join(', ') }}</span>
+              <span class="truncate text-muted-foreground">{{ (a.names?.length ? a.names : [a.name]).join(', ') }}</span>
             </label>
-            <span class="tabular-nums text-slate-500 dark:text-slate-400">{{ a.commits }} commits</span>
+            <span class="tabular-nums text-muted-foreground">{{ a.commits }} commits</span>
           </li>
         </ul>
       </div>
     </SettingsSection>
 
     <SettingsSection title="Repos" :hint="`${includedCount} of ${store.sortedRepos.length} included. Excluded repos are hidden from the timeline.`">
-      <ul class="divide-y divide-slate-100 rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+      <ul class="divide-y rounded-md border">
         <li v-for="r in store.sortedRepos" :key="r.id" class="flex items-center gap-3 px-3 py-1.5 text-sm">
           <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-            <input type="checkbox" :checked="isIncluded(r.path)" @change="toggleRepo(r.path)" />
-            <span class="font-medium" :class="isIncluded(r.path) ? '' : 'text-slate-400 line-through'">{{ r.name }}</span>
-            <span class="truncate font-mono text-xs text-slate-500 dark:text-slate-400">{{ r.path }}</span>
+            <Checkbox :model-value="isIncluded(r.path)" @update:model-value="toggleRepo(r.path)" />
+            <span class="font-medium" :class="isIncluded(r.path) ? '' : 'text-muted-foreground line-through'">{{ r.name }}</span>
+            <span class="truncate font-mono text-xs text-muted-foreground">{{ r.path }}</span>
           </label>
-          <span v-if="isPinned(r.path)" class="rounded bg-amber-100 px-1.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">pinned</span>
+          <Badge v-if="isPinned(r.path)" variant="secondary" class="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">pinned</Badge>
         </li>
-        <li v-if="!store.sortedRepos.length" class="px-3 py-2 text-sm text-slate-500">No repos found.</li>
+        <li v-if="!store.sortedRepos.length" class="px-3 py-2 text-sm text-muted-foreground">No repos found.</li>
       </ul>
       <div>
         <h3 class="mb-1 text-sm font-medium">Pinned repos</h3>
-        <p class="mb-1 text-xs text-slate-500 dark:text-slate-400">Extra repo paths always included, even outside scan folders.</p>
+        <p class="mb-1 text-xs text-muted-foreground">Extra repo paths always included, even outside scan folders.</p>
         <ul class="space-y-1">
           <li v-for="p in draft.pinnedRepos" :key="p" class="flex items-center gap-3 font-mono text-sm">
             <span class="truncate">{{ p }}</span>
-            <button :class="[rm, 'ml-auto']" @click="removeFrom('pinnedRepos', p)">Remove</button>
+            <Button variant="ghost" size="xs" :class="rm" @click="removeFrom('pinnedRepos', p)">Remove</Button>
           </li>
         </ul>
         <form class="mt-2 flex gap-2" @submit.prevent="addTo('pinnedRepos', newPinned); newPinned = ''">
-          <input v-model="newPinned" :class="[input, 'flex-1 font-mono']" placeholder="/path/to/repo" aria-label="Pin repo path" />
-          <button type="button" :class="btn" @click="picker = { key: 'pinnedRepos', initial: newPinned }">Browse…</button>
-          <button type="submit" :class="btn">Pin</button>
+          <Input v-model="newPinned" class="flex-1 font-mono" placeholder="/path/to/repo" aria-label="Pin repo path" />
+          <Button type="button" variant="outline" @click="picker = { key: 'pinnedRepos', initial: newPinned }">Browse…</Button>
+          <Button type="submit" variant="outline">Pin</Button>
         </form>
       </div>
     </SettingsSection>
 
     <SettingsSection title="History window" hint="How far back to read git history.">
       <div class="flex flex-wrap items-center gap-2">
-        <select v-model="sinceMode" :class="input" aria-label="History window">
-          <option v-for="p in SINCE_PRESETS" :key="p.value" :value="p.value">Last {{ p.label }}</option>
-          <option value="custom">Custom…</option>
-        </select>
-        <input
-          v-if="sinceMode === 'custom'" v-model="draft.since" :class="[input, 'w-64 font-mono']"
+        <Select v-model="sinceMode">
+          <SelectTrigger class="w-44" aria-label="History window"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="p in SINCE_PRESETS" :key="p.value" :value="p.value">Last {{ p.label }}</SelectItem>
+            <SelectItem value="custom">Custom…</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          v-if="sinceMode === 'custom'" v-model="draft.since" class="w-64 font-mono"
           placeholder="18 months ago, 2025-01-01" aria-label="Custom git --since"
         />
       </div>
@@ -267,57 +279,66 @@ function discard() {
       <ul class="flex flex-wrap gap-2">
         <li
           v-for="m in draft.meetings" :key="m"
-          class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-sm tabular-nums dark:bg-slate-800"
-        >
-          {{ m }}
-          <button class="hover:text-red-600" :aria-label="`Remove ${m}`" @click="removeFrom('meetings', m)">×</button>
+          >
+          <Badge variant="secondary" class="h-6 gap-1.5 px-2.5 text-sm tabular-nums">
+            {{ m }}
+            <button class="hover:text-destructive" :aria-label="`Remove ${m}`" @click="removeFrom('meetings', m)"><X class="size-3" /></button>
+          </Badge>
         </li>
-        <li v-if="!draft.meetings.length" class="text-sm text-slate-500">No meetings recorded.</li>
+        <li v-if="!draft.meetings.length" class="text-sm text-muted-foreground">No meetings recorded.</li>
       </ul>
       <form class="flex gap-2" @submit.prevent="addTo('meetings', newMeeting); newMeeting = ''">
-        <input v-model="newMeeting" type="date" :class="input" aria-label="Meeting date" />
-        <button type="submit" :class="btn" :disabled="!newMeeting">Add</button>
+        <Input v-model="newMeeting" type="date" class="w-auto" aria-label="Meeting date" />
+        <Button type="submit" variant="outline" :disabled="!newMeeting">Add</Button>
       </form>
     </SettingsSection>
 
-    <details class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <summary class="cursor-pointer text-base font-semibold">Advanced</summary>
-      <div class="mt-3 space-y-4 text-sm">
-        <label class="block">
-          <span class="font-medium">Scan depth (1–10)</span>
-          <input v-model.number="draft.scanDepth" type="number" min="1" max="10" :class="[input, 'mt-1 block w-24']" />
-        </label>
-        <label class="block">
-          <span class="font-medium">Ignored directory names (one per line)</span>
-          <textarea v-model="ignoreText" rows="5" :class="[input, 'mt-1 block w-full font-mono']" />
-        </label>
-        <label class="block">
-          <span class="font-medium">Exclude from line stats (globs, one per line)</span>
-          <textarea v-model="excludeText" rows="6" :class="[input, 'mt-1 block w-full font-mono']" />
-        </label>
-        <label class="block">
-          <span class="font-medium">Classifier keywords (JSON: type → regex list)</span>
-          <textarea
-            v-model="kwText" rows="6" spellcheck="false"
-            :class="[input, 'mt-1 block w-full font-mono', kwParsed.error ? 'border-red-500 dark:border-red-500' : '']"
-          />
-          <span v-if="kwParsed.error" class="text-red-600 dark:text-red-400">Invalid JSON: {{ kwParsed.error }}</span>
-        </label>
-      </div>
-    </details>
+    <Collapsible v-model:open="advancedOpen" as-child>
+      <Card class="gap-0 py-0">
+        <CollapsibleTrigger class="flex w-full cursor-pointer items-center justify-between p-4 text-left text-base font-semibold">
+          Advanced
+          <ChevronDown class="size-4 transition-transform" :class="advancedOpen && 'rotate-180'" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div class="space-y-4 px-4 pb-4 text-sm">
+            <div class="space-y-1">
+              <Label for="scan-depth">Scan depth (1–10)</Label>
+              <Input id="scan-depth" v-model.number="draft.scanDepth" type="number" min="1" max="10" class="w-24" />
+            </div>
+            <div class="space-y-1">
+              <Label for="ignore-dirs">Ignored directory names (one per line)</Label>
+              <Textarea id="ignore-dirs" v-model="ignoreText" rows="5" class="font-mono" />
+            </div>
+            <div class="space-y-1">
+              <Label for="exclude-globs">Exclude from line stats (globs, one per line)</Label>
+              <Textarea id="exclude-globs" v-model="excludeText" rows="6" class="font-mono" />
+            </div>
+            <div class="space-y-1">
+              <Label for="kw-json">Classifier keywords (JSON: type → regex list)</Label>
+              <Textarea id="kw-json" v-model="kwText" rows="6" spellcheck="false" class="font-mono" :aria-invalid="!!kwParsed.error" />
+              <span v-if="kwParsed.error" class="text-destructive">Invalid JSON: {{ kwParsed.error }}</span>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
 
-    <div v-if="errorMsg" class="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200" role="alert">
-      <p class="font-medium">{{ errorMsg }}</p>
-      <ul v-if="errorDetails.length" class="mt-1 list-disc pl-5">
-        <li v-for="d in errorDetails" :key="d">{{ d }}</li>
-      </ul>
-    </div>
-    <div v-if="result?.errors.length" class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-      <p class="font-medium">Scan errors</p>
-      <ul class="mt-1 list-disc pl-5">
-        <li v-for="e in result.errors" :key="e.repoPath"><span class="font-mono">{{ e.repoPath }}</span>: {{ e.message }}</li>
-      </ul>
-    </div>
+    <Alert v-if="errorMsg" variant="destructive">
+      <AlertTitle>{{ errorMsg }}</AlertTitle>
+      <AlertDescription v-if="errorDetails.length">
+        <ul class="list-disc pl-5">
+          <li v-for="d in errorDetails" :key="d">{{ d }}</li>
+        </ul>
+      </AlertDescription>
+    </Alert>
+    <Alert v-if="result?.errors.length" class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      <AlertTitle>Scan errors</AlertTitle>
+      <AlertDescription class="text-inherit">
+        <ul class="list-disc pl-5">
+          <li v-for="e in result.errors" :key="e.repoPath"><span class="font-mono">{{ e.repoPath }}</span>: {{ e.message }}</li>
+        </ul>
+      </AlertDescription>
+    </Alert>
 
     <FolderPicker
       v-if="picker"
@@ -326,20 +347,15 @@ function discard() {
       @select="onPicked" @close="picker = null"
     />
 
-    <div class="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+    <div class="fixed inset-x-0 bottom-0 border-t bg-card/95 backdrop-blur">
       <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 text-sm">
-        <span v-if="saving" class="text-slate-500">Saving and rescanning…</span>
+        <span v-if="saving" class="text-muted-foreground">Saving and rescanning…</span>
         <span v-else-if="dirty" class="text-amber-600 dark:text-amber-400">● Unsaved changes</span>
         <span v-else-if="savedMsg" class="text-emerald-600 dark:text-emerald-400">{{ savedMsg }}</span>
-        <span v-else class="text-slate-500">No changes</span>
+        <span v-else class="text-muted-foreground">No changes</span>
         <div class="ml-auto flex gap-2">
-          <button :class="btn" :disabled="!dirty || saving" @click="discard">Discard</button>
-          <button
-            class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-            :disabled="!canSave" @click="save"
-          >
-            Save
-          </button>
+          <Button variant="outline" :disabled="!dirty || saving" @click="discard">Discard</Button>
+          <Button :disabled="!canSave" @click="save">Save</Button>
         </div>
       </div>
     </div>

@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
 defineProps<{ title: string; hint?: string }>()
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-    <h2 class="text-base font-semibold">{{ title }}</h2>
-    <p v-if="hint" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{{ hint }}</p>
-    <div class="mt-3 space-y-3"><slot /></div>
-  </section>
+  <Card>
+    <CardHeader>
+      <CardTitle class="text-base">{{ title }}</CardTitle>
+      <CardDescription v-if="hint">{{ hint }}</CardDescription>
+    </CardHeader>
+    <CardContent class="space-y-3"><slot /></CardContent>
+  </Card>
 </template>

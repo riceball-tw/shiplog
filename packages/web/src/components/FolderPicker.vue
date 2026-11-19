@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { DirListing } from '@one-on-one/shared'
 import * as api from '../api'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ArrowUp, Folder, Home } from '@lucide/vue'
 
 const props = defineProps<{ title?: string; initialPath?: string }>()
 const emit = defineEmits<{ select: [path: string]; close: [] }>()
@@ -35,79 +40,65 @@ const crumbs = computed(() => {
   return [{ label: '/', path: '/' }, ...parts.map((name, i) => ({ label: name, path: '/' + parts.slice(0, i + 1).join('/') }))]
 })
 
-function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
-}
-
 onMounted(async () => {
-  window.addEventListener('keydown', onKey)
   const start = props.initialPath?.trim()
   // fall back to home when the typed value is not a valid dir
   if (!start || !(await go(start))) await go()
 })
-onUnmounted(() => window.removeEventListener('keydown', onKey))
 
-const btn =
-  'rounded-md border border-slate-300 px-2.5 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 disabled:opacity-50'
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-    role="dialog" aria-modal="true" :aria-label="title ?? 'Choose a folder'"
-    @mousedown.self="emit('close')"
-  >
-    <div class="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
-      <div class="border-b border-slate-200 p-4 dark:border-slate-800">
-        <h2 class="text-base font-semibold">{{ title ?? 'Choose a folder' }}</h2>
+  <Dialog :open="true" @update:open="(o) => !o && emit('close')">
+    <DialogContent class="flex max-h-[80vh] flex-col gap-0 p-0 sm:max-w-2xl" :show-close-button="false">
+      <DialogHeader class="border-b p-4">
+        <DialogTitle>{{ title ?? 'Choose a folder' }}</DialogTitle>
+        <DialogDescription class="sr-only">Browse to a directory and select it.</DialogDescription>
         <nav class="mt-2 flex flex-wrap items-center gap-0.5 font-mono text-sm" aria-label="Current path">
           <template v-for="(c, i) in crumbs" :key="c.path">
-            <span v-if="i > 1" class="text-slate-400">/</span>
-            <button
-              class="rounded px-1 hover:bg-slate-100 dark:hover:bg-slate-800"
-              :class="i === crumbs.length - 1 ? 'font-semibold' : 'text-indigo-600 dark:text-indigo-400'"
+            <span v-if="i > 1" class="text-muted-foreground">/</span>
+            <Button
+              variant="ghost"
+              size="xs"
+              class="px-1"
+              :class="i === crumbs.length - 1 ? 'font-semibold' : 'text-primary'"
               @click="go(c.path)"
             >
               {{ c.label }}
-            </button>
+            </Button>
           </template>
         </nav>
-        <div class="mt-3 flex gap-2">
-          <button :class="btn" :disabled="!listing?.parent || loading" @click="go(listing!.parent!)">↑ Up</button>
-          <button :class="btn" :disabled="loading" @click="go(listing?.home)">Home</button>
+        <div class="mt-2 flex gap-2">
+          <Button variant="outline" size="sm" :disabled="!listing?.parent || loading" @click="go(listing!.parent!)"><ArrowUp />Up</Button>
+          <Button variant="outline" size="sm" :disabled="loading" @click="go(listing?.home)"><Home />Home</Button>
         </div>
-      </div>
+      </DialogHeader>
 
       <div class="min-h-48 flex-1 overflow-auto p-2">
-        <p v-if="error" class="m-2 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200" role="alert">
-          {{ error }}
-        </p>
-        <p v-if="loading && !listing" class="p-2 text-sm text-slate-500">Loading…</p>
+        <Alert v-if="error" variant="destructive" class="m-2 w-auto">
+          <AlertDescription>{{ error }}</AlertDescription>
+        </Alert>
+        <p v-if="loading && !listing" class="p-2 text-sm text-muted-foreground">Loading…</p>
         <ul v-if="listing" :class="loading ? 'opacity-50' : ''">
           <li v-for="e in listing.entries" :key="e.path">
             <button
-              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
               @click="go(e.path)"
             >
-              <span aria-hidden="true">📁</span>
+              <Folder class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span class="truncate">{{ e.name }}</span>
-              <span v-if="e.isGitRepo" class="rounded bg-emerald-100 px-1.5 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">git</span>
+              <Badge v-if="e.isGitRepo" variant="secondary" class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">git</Badge>
             </button>
           </li>
-          <li v-if="!listing.entries.length && !loading" class="p-2 text-sm text-slate-500">No subfolders.</li>
+          <li v-if="!listing.entries.length && !loading" class="p-2 text-sm text-muted-foreground">No subfolders.</li>
         </ul>
       </div>
 
-      <div class="flex items-center gap-3 border-t border-slate-200 p-4 dark:border-slate-800">
-        <span class="min-w-0 flex-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400" :title="listing?.path">{{ listing?.path }}</span>
-        <button :class="btn" @click="emit('close')">Cancel</button>
-        <button
-          class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-          :disabled="!listing || loading" @click="emit('select', listing!.path)"
-        >
-          Select this folder
-        </button>
+      <div class="flex items-center gap-3 border-t p-4">
+        <span class="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" :title="listing?.path">{{ listing?.path }}</span>
+        <Button variant="outline" @click="emit('close')">Cancel</Button>
+        <Button :disabled="!listing || loading" @click="emit('select', listing!.path)">Select this folder</Button>
       </div>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 </template>

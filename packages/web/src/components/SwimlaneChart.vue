@@ -41,13 +41,13 @@ function onClick(p: any) {
 </script>
 
 <template>
-  <p v-if="!store.visibleRepos.length" class="px-4 py-8 text-center text-sm text-slate-500">No repos visible.</p>
+  <p v-if="!store.visibleRepos.length" class="px-4 py-8 text-center text-sm text-muted-foreground">No repos visible.</p>
   <template v-else>
-    <div v-if="typesPresent.length" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-1 pt-2 text-xs text-slate-600 dark:text-slate-400">
+    <div v-if="typesPresent.length" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-1 pt-2 text-xs text-muted-foreground">
       <span v-for="t in typesPresent" :key="t" class="inline-flex items-center gap-1">
         <span class="size-2.5 rounded-full" :style="{ background: COMMIT_TYPE_COLORS[t].hex }" />{{ t }}
       </span>
-      <span class="text-slate-500">· faded dots = low-confidence (guessed) type</span>
+      <span class="text-muted-foreground">· faded dots = low-confidence (guessed) type</span>
     </div>
     <div @wheel.capture="onWheelCapture">
       <VChart

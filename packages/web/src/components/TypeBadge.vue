@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import type { Classification } from '@one-on-one/shared'
+import type { Classification, CommitType } from '@one-on-one/shared'
 import { COMMIT_TYPE_COLORS } from '../lib/commitTypes'
+import { Badge } from '@/components/ui/badge'
 
-defineProps<{ classification: Classification }>()
+const props = defineProps<{ classification?: Classification; type?: CommitType; confident?: boolean }>()
+const t = () => props.classification?.type ?? props.type ?? 'other'
 </script>
 
 <template>
-  <span
-    class="inline-block rounded px-1.5 py-0.5 text-xs font-medium"
-    :class="[COMMIT_TYPE_COLORS[classification.type].badge, classification.confidence === 'low' && 'opacity-50']"
-    :title="classification.confidence === 'low' ? 'Guessed by heuristic' : 'Conventional Commit'"
+  <Badge
+    variant="secondary"
+    class="h-auto rounded px-1.5 py-0.5"
+    :class="[COMMIT_TYPE_COLORS[t()].badge, classification?.confidence === 'low' && 'opacity-50']"
+    :title="classification ? (classification.confidence === 'low' ? 'Guessed by heuristic' : 'Conventional Commit') : undefined"
   >
-    {{ classification.type }}{{ classification.breaking ? '!' : '' }}
-  </span>
+    <slot>{{ t() }}{{ classification?.breaking ? '!' : '' }}</slot>
+  </Badge>
 </template>

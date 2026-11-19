@@ -2,6 +2,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { commitKey, useAppStore, type TimedCommit } from '../stores/app'
 import TypeBadge from './TypeBadge.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 const PAGE = 300
 const store = useAppStore()
@@ -38,48 +42,44 @@ watch(
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-    <h2 class="border-b border-slate-200 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+  <Card class="gap-0 py-0">
+    <h2 class="border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
       Commits ({{ store.commitsInRange.length }})
     </h2>
-    <div v-if="store.error" class="m-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-      {{ store.error }}
-    </div>
-    <p v-else-if="store.loading" class="p-4 text-sm text-slate-500">Loading…</p>
-    <p v-else-if="!store.commitsInRange.length" class="p-4 text-sm text-slate-500">
+    <Alert v-if="store.error" variant="destructive" class="m-4 w-auto">
+      <AlertDescription>{{ store.error }}</AlertDescription>
+    </Alert>
+    <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
+    <p v-else-if="!store.commitsInRange.length" class="p-4 text-sm text-muted-foreground">
       No commits in this range. Try a wider range or Rescan.
     </p>
     <div v-else>
       <div v-for="g in groups" :key="g.key">
-        <h3 class="bg-slate-50 px-4 py-1.5 text-xs font-semibold text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">{{ g.label }}</h3>
-        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+        <h3 class="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground">{{ g.label }}</h3>
+        <ul class="divide-y">
           <li
             v-for="c in g.items"
             :id="'commit-' + c.repoId + '-' + c.hash"
             :key="c.repoId + c.hash"
             class="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm"
-            :class="store.selectedKey === commitKey(c) ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-500 dark:bg-indigo-950/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+            :class="store.selectedKey === commitKey(c) ? 'bg-accent ring-2 ring-inset ring-ring' : 'hover:bg-muted/50'"
             @click="store.select(c)"
           >
-            <span class="w-20 shrink-0 whitespace-nowrap text-slate-500 dark:text-slate-400">{{ time(c.ts) }}</span>
-            <span class="w-32 shrink-0 truncate text-slate-600 dark:text-slate-300">{{ repoName.get(c.repoId) ?? c.repoId }}</span>
+            <span class="w-20 shrink-0 whitespace-nowrap text-muted-foreground">{{ time(c.ts) }}</span>
+            <span class="w-32 shrink-0 truncate text-foreground/80">{{ repoName.get(c.repoId) ?? c.repoId }}</span>
             <TypeBadge :classification="c.classification" />
             <span class="min-w-0 flex-1 truncate" :title="c.subject">{{ c.subject }}</span>
-            <span v-for="t in c.tickets" :key="t" class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ t }}</span>
+            <Badge v-for="t in c.tickets" :key="t" variant="secondary">{{ t }}</Badge>
             <span class="shrink-0 font-mono text-xs">
               <span class="text-emerald-600 dark:text-emerald-400">+{{ c.insertions }}</span>
-              <span class="ml-1 text-red-600 dark:text-red-400">-{{ c.deletions }}</span>
+              <span class="ml-1 text-destructive">-{{ c.deletions }}</span>
             </span>
           </li>
         </ul>
       </div>
-      <button
-        v-if="remaining"
-        class="w-full border-t border-slate-200 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-slate-50 dark:border-slate-800 dark:text-indigo-400 dark:hover:bg-slate-800/50"
-        @click="limit += PAGE"
-      >
+      <Button v-if="remaining" variant="ghost" class="h-11 w-full rounded-none border-t text-primary" @click="limit += PAGE">
         Show more ({{ remaining }} remaining)
-      </button>
+      </Button>
     </div>
-  </section>
+  </Card>
 </template>

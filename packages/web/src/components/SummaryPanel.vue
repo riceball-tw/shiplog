@@ -3,10 +3,19 @@ import { computed, ref, watch } from 'vue'
 import type { CommitType } from '@one-on-one/shared'
 import { useAppStore } from '../stores/app'
 import { fmtShort, rangeLabel } from '../lib/dates'
-import { COMMIT_TYPE_COLORS } from '../lib/commitTypes'
 import { loadPref, savePref } from '../lib/prefs'
 import { summarize, toMarkdown, TYPE_LABELS, type Item } from '../lib/summary'
 import { prefersDark } from '../lib/theme'
+import TypeBadge from './TypeBadge.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Label } from '@/components/ui/label'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { ChevronDown, ChevronRight } from '@lucide/vue'
 
 const GROUPS = ['ticket', 'type', 'repo'] as const
 type GroupBy = (typeof GROUPS)[number]
@@ -68,81 +77,73 @@ async function copy() {
   clearTimeout(timer)
   timer = setTimeout(() => (copied.value = false), 2000)
 }
-const typeBadge = (t: CommitType) => COMMIT_TYPE_COLORS[t].badge
 </script>
 
 <template>
-  <section class="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+  <Card class="gap-0 py-0">
     <!-- controls -->
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3">
       <div class="flex items-center gap-2 text-sm">
-        <span class="text-slate-500 dark:text-slate-400">Group by</span>
-        <div class="inline-flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-700" role="group">
-          <button
-            v-for="g in GROUPS"
-            :key="g"
-            class="px-3 py-1 text-sm font-medium"
-            :class="groupBy === g ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'"
-            :aria-pressed="groupBy === g"
-            @click="groupBy = g"
-          >
-            {{ GROUP_LABELS[g] }}
-          </button>
-        </div>
+        <span class="text-muted-foreground">Group by</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          :model-value="groupBy"
+          @update:model-value="(v) => v && (groupBy = v as GroupBy)"
+        >
+          <ToggleGroupItem v-for="g in GROUPS" :key="g" :value="g">{{ GROUP_LABELS[g] }}</ToggleGroupItem>
+        </ToggleGroup>
       </div>
-      <label class="flex cursor-pointer items-center gap-2 text-sm">
-        <input v-model="hideNoise" type="checkbox" class="size-4 accent-indigo-600" />
-        Hide noise (chore/ci/style/build)
-      </label>
-      <button
-        class="ml-auto rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        :disabled="!summary.totals.commits"
-        @click="copy"
-      >
+      <div class="flex items-center gap-2 text-sm">
+        <Checkbox id="hide-noise" v-model="hideNoise" />
+        <Label for="hide-noise" class="cursor-pointer font-normal">Hide noise (chore/ci/style/build)</Label>
+      </div>
+      <Button class="ml-auto" :disabled="!summary.totals.commits" @click="copy">
         {{ copied ? 'Copied ✓' : 'Copy as Markdown' }}
-      </button>
+      </Button>
     </div>
 
-    <div v-if="store.error" class="m-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-      {{ store.error }}
-    </div>
-    <p v-else-if="store.loading" class="p-4 text-sm text-slate-500">Loading…</p>
-    <p v-else-if="!summary.totals.commits" class="p-4 text-sm text-slate-500">No commits in this range. Try a wider range or Rescan.</p>
+    <Alert v-if="store.error" variant="destructive" class="m-4 w-auto">
+      <AlertDescription>{{ store.error }}</AlertDescription>
+    </Alert>
+    <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
+    <p v-else-if="!summary.totals.commits" class="p-4 text-sm text-muted-foreground">No commits in this range. Try a wider range or Rescan.</p>
     <div v-else class="space-y-5 p-4">
-      <p class="text-sm text-slate-600 dark:text-slate-300">
+      <p class="text-sm text-foreground/80">
         <span class="font-semibold">{{ nf(summary.totals.commits) }}</span> commits across
         <span class="font-semibold">{{ summary.totals.repos }}</span> {{ summary.totals.repos === 1 ? 'repo' : 'repos' }} on
         <span class="font-semibold">{{ summary.totals.activeDays }}</span> active days ·
         <span class="font-mono"><span class="text-emerald-600 dark:text-emerald-400">+{{ nf(summary.totals.insertions) }}</span>
-          <span class="ml-1 text-red-600 dark:text-red-400">−{{ nf(summary.totals.deletions) }}</span></span>
-        <span v-if="summary.totals.noiseHidden" class="ml-1 text-slate-500 dark:text-slate-400">· {{ summary.totals.noiseHidden }} noise commits hidden</span>
+          <span class="ml-1 text-destructive">−{{ nf(summary.totals.deletions) }}</span></span>
+        <span v-if="summary.totals.noiseHidden" class="ml-1 text-muted-foreground">· {{ summary.totals.noiseHidden }} noise commits hidden</span>
       </p>
 
       <!-- Ticket view -->
-      <ul v-if="groupBy === 'ticket'" class="divide-y divide-slate-100 rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+      <ul v-if="groupBy === 'ticket'" class="divide-y rounded-md border">
         <li v-for="g in summary.byTicket" :key="g.key ?? '__none'">
-          <button class="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50" :aria-expanded="open.has(g.key ?? '__none')" @click="toggle(g.key ?? '__none')">
-            <span class="mt-0.5 w-3 shrink-0 text-slate-400">{{ open.has(g.key ?? '__none') ? '▾' : '▸' }}</span>
+          <button class="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50" :aria-expanded="open.has(g.key ?? '__none')" @click="toggle(g.key ?? '__none')">
+            <span class="mt-0.5 w-3 shrink-0 text-muted-foreground">{{ open.has(g.key ?? '__none') ? '▾' : '▸' }}</span>
             <span class="min-w-0 flex-1">
               <span class="line-clamp-2 break-words" :title="g.title">
-                <span class="font-mono font-semibold" :class="g.key === null && 'text-slate-500 dark:text-slate-400'">{{ g.key ?? 'No ticket' }}</span>
+                <span class="font-mono font-semibold" :class="g.key === null && 'text-muted-foreground'">{{ g.key ?? 'No ticket' }}</span>
                 <span v-if="g.key !== null && g.title" class="ml-2">{{ g.title }}</span>
               </span>
-              <span class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span v-for="[t] in typeCounts(g.items)" :key="t" class="rounded px-1.5 py-0.5 font-medium" :class="typeBadge(t)">{{ t }}</span>
-                <span v-for="r in g.repoIds" :key="r" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <span class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                <TypeBadge v-for="[t] in typeCounts(g.items)" :key="t" :type="t" />
+                <Badge v-for="r in g.repoIds" :key="r" variant="secondary">
                   <span class="size-2 rounded-sm" :style="{ background: color(r) }" />{{ repoName(r) }}
-                </span>
+                </Badge>
                 <span>· {{ g.items.length }} {{ g.items.length === 1 ? 'commit' : 'commits' }} · {{ span(g.first, g.last) }}</span>
               </span>
             </span>
           </button>
-          <ul v-if="open.has(g.key ?? '__none')" class="space-y-1 bg-slate-50 px-3 py-2 pl-9 text-sm dark:bg-slate-950/40">
+          <ul v-if="open.has(g.key ?? '__none')" class="space-y-1 bg-muted/40 px-3 py-2 pl-9 text-sm">
             <li v-for="it in g.items" :key="it.commit.repoId + it.commit.hash" class="flex items-center gap-2">
-              <span class="w-14 shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ fmtShort(it.ts) }}</span>
-              <span class="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium" :class="typeBadge(it.commit.classification.type)">{{ it.commit.classification.type }}</span>
+              <span class="w-14 shrink-0 text-xs text-muted-foreground">{{ fmtShort(it.ts) }}</span>
+              <TypeBadge class="shrink-0" :type="it.commit.classification.type" />
               <span class="min-w-0 flex-1 truncate" :title="it.commit.subject">{{ it.title }}</span>
-              <span v-if="g.key === null && it.commit.classification.scope" class="shrink-0 text-xs text-slate-500">{{ it.commit.classification.scope }}</span>
+              <span v-if="g.key === null && it.commit.classification.scope" class="shrink-0 text-xs text-muted-foreground">{{ it.commit.classification.scope }}</span>
             </li>
           </ul>
         </li>
@@ -152,14 +153,14 @@ const typeBadge = (t: CommitType) => COMMIT_TYPE_COLORS[t].badge
       <div v-else-if="groupBy === 'type'" class="space-y-4">
         <div v-for="g in summary.byType" :key="g.type">
           <h3 class="mb-1 flex items-center gap-2 text-sm font-semibold">
-            <span class="rounded px-1.5 py-0.5 text-xs font-medium" :class="typeBadge(g.type)">{{ g.type }}</span>
+            <TypeBadge :type="g.type" />
             {{ TYPE_LABELS[g.type] }} ({{ g.items.length }})
           </h3>
           <ul class="space-y-0.5 pl-1 text-sm">
             <li v-for="it in g.items" :key="it.commit.repoId + it.commit.hash" class="flex gap-2">
               <span class="min-w-0 flex-1 truncate" :title="it.commit.subject">{{ it.title }}</span>
-              <span v-for="t in it.commit.tickets" :key="t" class="shrink-0 rounded-full bg-slate-100 px-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ t }}</span>
-              <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ repoName(it.commit.repoId) }}</span>
+              <Badge v-for="t in it.commit.tickets" :key="t" variant="secondary" class="shrink-0">{{ t }}</Badge>
+              <span class="shrink-0 text-xs text-muted-foreground">{{ repoName(it.commit.repoId) }}</span>
             </li>
           </ul>
         </div>
@@ -167,19 +168,19 @@ const typeBadge = (t: CommitType) => COMMIT_TYPE_COLORS[t].badge
 
       <!-- Repo view -->
       <div v-else class="grid gap-3 md:grid-cols-2">
-        <div v-for="r in summary.byRepo" :key="r.repoId" class="rounded-md border border-slate-200 p-3 dark:border-slate-800">
+        <div v-for="r in summary.byRepo" :key="r.repoId" class="rounded-md border p-3">
           <h3 class="flex items-center gap-2 text-sm font-semibold">
             <span class="size-3 rounded-sm" :style="{ background: color(r.repoId) }" />
             <span class="min-w-0 flex-1 truncate">{{ repoName(r.repoId) }}</span>
-            <span class="font-mono text-xs font-normal"><span class="text-emerald-600 dark:text-emerald-400">+{{ nf(r.insertions) }}</span> <span class="text-red-600 dark:text-red-400">−{{ nf(r.deletions) }}</span></span>
+            <span class="font-mono text-xs font-normal"><span class="text-emerald-600 dark:text-emerald-400">+{{ nf(r.insertions) }}</span> <span class="text-destructive">−{{ nf(r.deletions) }}</span></span>
           </h3>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ r.commits }} commits</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{ r.commits }} commits</p>
           <div class="mt-2 flex flex-wrap gap-1">
-            <span v-for="g in r.byType" :key="g.type" class="rounded px-1.5 py-0.5 text-xs font-medium" :class="typeBadge(g.type)">{{ g.type }} {{ g.items.length }}</span>
+            <TypeBadge v-for="g in r.byType" :key="g.type" :type="g.type">{{ g.type }} {{ g.items.length }}</TypeBadge>
           </div>
-          <ul v-if="r.topDirs.length" class="mt-2 space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+          <ul v-if="r.topDirs.length" class="mt-2 space-y-0.5 text-xs text-foreground/80">
             <li v-for="d in r.topDirs.slice(0, 5)" :key="d.dir" class="flex justify-between gap-2">
-              <span class="truncate font-mono">{{ d.dir }}</span><span class="shrink-0 text-slate-500">{{ nf(d.lines) }} lines</span>
+              <span class="truncate font-mono">{{ d.dir }}</span><span class="shrink-0 text-muted-foreground">{{ nf(d.lines) }} lines</span>
             </li>
           </ul>
         </div>
@@ -187,23 +188,27 @@ const typeBadge = (t: CommitType) => COMMIT_TYPE_COLORS[t].badge
 
       <!-- Top areas -->
       <div v-if="summary.topDirs.length">
-        <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Top areas</h3>
+        <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top areas</h3>
         <ul class="grid gap-x-6 gap-y-0.5 text-sm sm:grid-cols-2">
           <li v-for="d in summary.topDirs" :key="d.repoId + d.dir" class="flex items-center gap-2">
             <span class="size-2 shrink-0 rounded-sm" :style="{ background: color(d.repoId) }" />
             <span class="min-w-0 flex-1 truncate font-mono text-xs" :title="repoName(d.repoId) + ' / ' + d.dir">{{ repoName(d.repoId) }}/{{ d.dir }}</span>
-            <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ nf(d.lines) }} lines · {{ d.commits }}c</span>
+            <span class="shrink-0 text-xs text-muted-foreground">{{ nf(d.lines) }} lines · {{ d.commits }}c</span>
           </li>
         </ul>
       </div>
 
       <!-- Markdown preview -->
-      <div>
-        <button class="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400" :aria-expanded="showPreview" @click="showPreview = !showPreview">
-          {{ showPreview ? '▾' : '▸' }} Preview markdown
-        </button>
-        <pre v-if="showPreview" class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-xs dark:bg-slate-950">{{ markdown }}</pre>
-      </div>
+      <Collapsible v-model:open="showPreview">
+        <CollapsibleTrigger as-child>
+          <Button variant="link" class="h-auto px-0" :aria-expanded="showPreview">
+            <component :is="showPreview ? ChevronDown : ChevronRight" /> Preview markdown
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <pre class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{{ markdown }}</pre>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
-  </section>
+  </Card>
 </template>
