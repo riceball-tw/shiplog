@@ -102,6 +102,31 @@ describe('discovery + scan', () => {
     expect(result.newCommits).toBe(3)
   })
 
+  it('a rescan drops commits no longer matching the config', async () => {
+    const store = new MemoryCommitStore()
+    const { app } = createApp({ store, allowMissingHost: true })
+    await app.request('/api/scan', { method: 'POST' })
+    expect(await (await app.request('/api/commits')).json()).toHaveLength(3)
+
+    const put = (cfg: object) =>
+      app.request('/api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cfg) })
+    const cfg = await (await app.request('/api/config')).json()
+    await put({ ...cfg, authorEmails: ['someone@else.com'] })
+    await app.request('/api/scan', { method: 'POST' })
+    const commits = await (await app.request('/api/commits')).json()
+    expect(commits.map((c: any) => c.subject)).toEqual(['fix: bug'])
+
+    await put(cfg)
+  })
+
+  it('keeps commits of a repo that fails to rescan', () => {
+    const store = new MemoryCommitStore()
+    const mk = (hash: string, repoId: string) => ({ hash, repoId, date: '2026-01-01T00:00:00Z' }) as any
+    store.replace([mk('a1', 'a'), mk('b1', 'b')])
+    expect(store.replace([mk('a2', 'a')], ['b'])).toBe(1)
+    expect(store.query({}).map((c) => c.hash).sort()).toEqual(['a2', 'b1'])
+  })
+
   it('serves health and config', async () => {
     const { app } = createApp({ store: new MemoryCommitStore(), allowMissingHost: true })
     expect(await (await app.request('/api/health')).json()).toEqual({ ok: true })

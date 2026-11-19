@@ -26,6 +26,7 @@ export async function scan(
   const repoList = await discoverRepos(config)
   const included = repoList.filter((r) => r.included)
   const errors: ScanResult['errors'] = []
+  const failedRepoIds: string[] = []
 
   const results = await mapLimit(included, CONCURRENCY, async (repo): Promise<Commit[]> => {
     try {
@@ -37,11 +38,13 @@ export async function scan(
       })
     } catch (err) {
       errors.push({ repoPath: repo.path, message: err instanceof Error ? err.message : String(err) })
+      failedRepoIds.push(repo.id)
       return []
     }
   })
 
-  // upsert in repo order so duplicate clones resolve deterministically (first wins)
-  const newCommits = results.reduce((n, commits) => n + store.upsert(commits), 0)
+  // Replace rather than add, so commits from authors, repos or history no longer in the config
+  // disappear. Repo order keeps duplicate clones deterministic (first wins).
+  const newCommits = store.replace(results.flat(), failedRepoIds)
   return { repos: included.length, newCommits, durationMs: Date.now() - start, errors, repoList }
 }

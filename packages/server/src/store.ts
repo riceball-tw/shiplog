@@ -7,8 +7,12 @@ export interface CommitQuery {
 }
 
 export interface CommitStore {
-  /** Insert commits not yet seen (by hash); returns the number of new ones. */
-  upsert(commits: Commit[]): number
+  /**
+   * Replace the stored commits with a fresh scan result (first occurrence of a hash wins).
+   * Commits of `keepRepoIds` are carried over from the previous contents, so a repo that failed
+   * to scan doesn't vanish. Returns the number of hashes that weren't stored before.
+   */
+  replace(commits: Commit[], keepRepoIds?: Iterable<string>): number
   query(q: CommitQuery): Commit[]
   heatmap(q: CommitQuery): HeatmapRow[]
 }
@@ -35,13 +39,15 @@ export function localDay(iso: string): string {
 export class MemoryCommitStore implements CommitStore {
   private byHash = new Map<string, Commit>()
 
-  upsert(commits: Commit[]): number {
+  replace(commits: Commit[], keepRepoIds: Iterable<string> = []): number {
+    const prev = this.byHash
+    const keep = new Set(keepRepoIds)
+    const next = new Map<string, Commit>()
+    for (const c of commits) if (!next.has(c.hash)) next.set(c.hash, c)
+    for (const c of prev.values()) if (keep.has(c.repoId) && !next.has(c.hash)) next.set(c.hash, c)
+    this.byHash = next
     let added = 0
-    for (const c of commits) {
-      if (this.byHash.has(c.hash)) continue
-      this.byHash.set(c.hash, c)
-      added++
-    }
+    for (const hash of next.keys()) if (!prev.has(hash)) added++
     return added
   }
 
