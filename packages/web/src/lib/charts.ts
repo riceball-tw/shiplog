@@ -278,7 +278,7 @@ export function buildSwimlaneOption(a: SwimlaneArgs): EChartsOption {
         type: 'inside',
         xAxisIndex: 0,
         filterMode: 'none',
-        zoomOnMouseWheel: true,
+        zoomOnMouseWheel: true, // plain wheel is filtered out in SwimlaneChart.vue (capture) so the page scrolls; Ctrl/⌘/pinch zooms
         moveOnMouseMove: true,
         moveOnMouseWheel: false,
         minValueSpan: DAY,

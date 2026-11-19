@@ -24,6 +24,12 @@ const height = computed(() => swimlaneHeight(store.visibleRepos.length))
 
 watch(option, () => nextTick(() => apply(true)))
 
+// ECharts always preventDefault()s wheel events when wheel-zoom is on, which blocks page scroll.
+// Swallow unmodified wheel events before ECharts sees them so the browser scrolls normally.
+function onWheelCapture(e: WheelEvent) {
+  if (!e.ctrlKey && !e.metaKey) e.stopPropagation()
+}
+
 function onClick(p: any) {
   if (p?.seriesName === 'commits' && p.data?.hash) store.select({ repoId: p.data.repoId, hash: p.data.hash })
 }
@@ -31,15 +37,18 @@ function onClick(p: any) {
 
 <template>
   <p v-if="!store.visibleRepos.length" class="px-4 py-8 text-center text-sm text-slate-500">No repos visible.</p>
-  <VChart
-    v-else
-    ref="chart"
-    class="w-full"
-    :style="{ height: height + 'px' }"
-    :option="option"
-    autoresize
-    @datazoom="onDataZoom"
-    @finished="onFinished"
-    @click="onClick"
-  />
+  <template v-else>
+    <div @wheel.capture="onWheelCapture">
+      <VChart
+        ref="chart"
+        class="w-full"
+        :style="{ height: height + 'px' }"
+        :option="option"
+        autoresize
+        @datazoom="onDataZoom"
+        @finished="onFinished"
+        @click="onClick"
+      />
+    </div>
+  </template>
 </template>

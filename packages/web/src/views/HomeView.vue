@@ -57,7 +57,7 @@ watch(
     <RangePresets />
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <p class="px-4 pt-2 text-xs text-slate-500 dark:text-slate-400">
-        Drag the handles or the highlighted window to choose a range · scroll over the lanes to zoom
+        Drag the handles or the highlighted window to choose a range · ⌘/Ctrl + scroll over the lanes to zoom
       </p>
       <OverviewChart />
       <div class="border-t border-slate-100 dark:border-slate-800">
