@@ -43,7 +43,6 @@ Settings are stored in `~/.one-on-one/config.json`. Set `ONE_ON_ONE_HOME` to use
 | `ignoreDirs` | Directory names skipped while scanning | `node_modules`, `vendor`, `.cache`, `dist`, `build`, `.venv`, `Pods` |
 | `excludeFromStats` | Globs excluded from line counts | lock files, `*.min.js`, `dist/**`, snapshots, `go.sum` |
 | `since` | Only read history newer than this (ISO date or `"12 months ago"`) | `12 months ago` |
-| `meetings` | Past 1:1 dates (`YYYY-MM-DD`), drawn as markers on the overview; "Mark today as 1:1" on the home page adds one | `[]` |
 | `classifier.keywords` | Extra keyword rules per commit type (regex source strings), checked before the built-in ones | `{}` |
 
 ## How commits are classified

@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
-import { defaultConfig, loadConfig } from '../src/config.js'
+import { configPath, defaultConfig, loadConfig } from '../src/config.js'
 import { MemoryCommitStore } from '../src/store.js'
 
 const tmp = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'ooo-cfg-')))
@@ -22,7 +22,7 @@ describe('PUT /api/config validation', () => {
   })
 
   it('saves a valid config and round-trips', async () => {
-    const cfg = { ...defaultConfig(), scanRoots: [dir], authorEmails: ['a@b.co'], meetings: ['2026-01-31'], classifier: { keywords: { fix: ['hot\\s?fix'] } } }
+    const cfg = { ...defaultConfig(), scanRoots: [dir], authorEmails: ['a@b.co'], classifier: { keywords: { fix: ['hot\\s?fix'] } } }
     const res = await put(cfg)
     expect(res.status).toBe(200)
     expect((await loadConfig()).scanRoots).toEqual([dir])
@@ -35,8 +35,6 @@ describe('PUT /api/config validation', () => {
     ['depth 0', { scanDepth: 0 }, 'scanDepth'],
     ['depth 11', { scanDepth: 11 }, 'scanDepth'],
     ['bad email', { authorEmails: ['not-an-email'] }, 'authorEmails'],
-    ['bad meeting format', { meetings: ['01/02/2026'] }, 'meetings'],
-    ['impossible meeting date', { meetings: ['2026-02-31'] }, 'meetings'],
     ['bad regex', { classifier: { keywords: { fix: ['(unclosed'] } } }, 'invalid regex'],
   ]
   for (const [name, patch, needle] of cases) {
@@ -48,6 +46,15 @@ describe('PUT /api/config validation', () => {
       expect(body.details.some((d) => d.includes(needle))).toBe(true)
     })
   }
+
+  it('loads and accepts a legacy config with a meetings key, dropping it on save', async () => {
+    const legacy = { ...defaultConfig(), scanRoots: [dir], meetings: ['2026-01-31'] }
+    mkdirSync(path.dirname(configPath()), { recursive: true })
+    writeFileSync(configPath(), JSON.stringify(legacy))
+    expect(await loadConfig()).not.toHaveProperty('meetings')
+    expect((await put(legacy)).status).toBe(200)
+    expect(JSON.parse(readFileSync(configPath(), 'utf8'))).not.toHaveProperty('meetings')
+  })
 
   it('reports multiple problems at once', async () => {
     const res = await put({ ...defaultConfig(), scanDepth: 99, authorEmails: ['x'] })

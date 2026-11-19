@@ -36,7 +36,6 @@ const authorsLoading = ref(false)
 const newRoot = ref('')
 const newPinned = ref('')
 const newEmail = ref('')
-const newMeeting = ref('')
 const picker = ref<{ key: 'scanRoots' | 'pinnedRepos'; initial: string } | null>(null)
 function onPicked(p: string) {
   if (picker.value) addTo(picker.value.key, p)
@@ -103,13 +102,12 @@ onMounted(async () => {
 })
 
 // ---- list helpers ----
-function addTo(key: 'scanRoots' | 'pinnedRepos' | 'meetings', raw: string) {
+function addTo(key: 'scanRoots' | 'pinnedRepos', raw: string) {
   const v = raw.trim()
   if (!v || !draft.value) return
   if (!draft.value[key].includes(v)) draft.value[key] = [...draft.value[key], v]
-  if (key === 'meetings') draft.value.meetings.sort()
 }
-function removeFrom(key: 'scanRoots' | 'pinnedRepos' | 'meetings' | 'authorEmails', v: string) {
+function removeFrom(key: 'scanRoots' | 'pinnedRepos' | 'authorEmails', v: string) {
   if (draft.value) draft.value[key] = draft.value[key].filter((x) => x !== v)
 }
 
@@ -273,24 +271,6 @@ function discard() {
           placeholder="18 months ago, 2025-01-01" aria-label="Custom git --since"
         />
       </div>
-    </SettingsSection>
-
-    <SettingsSection title="1:1 meetings" hint="Dates of past 1:1s, shown as markers on the timeline.">
-      <ul class="flex flex-wrap gap-2">
-        <li
-          v-for="m in draft.meetings" :key="m"
-          >
-          <Badge variant="secondary" class="h-6 gap-1.5 px-2.5 text-sm tabular-nums">
-            {{ m }}
-            <button class="hover:text-destructive" :aria-label="`Remove ${m}`" @click="removeFrom('meetings', m)"><X class="size-3" /></button>
-          </Badge>
-        </li>
-        <li v-if="!draft.meetings.length" class="text-sm text-muted-foreground">No meetings recorded.</li>
-      </ul>
-      <form class="flex gap-2" @submit.prevent="addTo('meetings', newMeeting); newMeeting = ''">
-        <Input v-model="newMeeting" type="date" class="w-auto" aria-label="Meeting date" />
-        <Button type="submit" variant="outline" :disabled="!newMeeting">Add</Button>
-      </form>
     </SettingsSection>
 
     <Collapsible v-model:open="advancedOpen" as-child>

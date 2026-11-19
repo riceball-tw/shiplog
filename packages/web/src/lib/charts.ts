@@ -2,7 +2,7 @@ import type { EChartsOption } from 'echarts'
 import type { Repo } from '@one-on-one/shared'
 import type { Range, TimedCommit } from '../stores/app'
 import { COMMIT_TYPE_COLORS } from './commitTypes'
-import { DAY, dayStart, fmtLong, parseYmd, weekStart } from './dates'
+import { DAY, dayStart, fmtLong, weekStart } from './dates'
 
 export const OVERVIEW_HEIGHT = 140
 export const LANE_HEIGHT = 60
@@ -49,7 +49,6 @@ export interface OverviewArgs {
   topRepoIds: string[]
   otherColor: string
   extent: Range
-  meetings: string[]
   theme: ChartTheme
 }
 
@@ -114,11 +113,6 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
       ]
     : []
 
-  const meetingLines = a.meetings
-    .map(parseYmd)
-    .filter((x): x is number => x != null && x >= extent.from && x <= extent.to)
-    .map((x) => ({ xAxis: x + half }))
-
   const axisCommon = { type: 'time' as const, min: extent.from, max: extent.to }
   return {
     animation: false,
@@ -166,21 +160,6 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
     series: [
       ...bars,
       ...otherBar,
-      {
-        // 1:1 meeting markers
-        type: 'line',
-        name: 'meetings',
-        silent: true,
-        data: [],
-        tooltip: { show: false },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          lineStyle: { color: t.textMuted, type: 'dashed', width: 1 },
-          label: { show: true, formatter: '1:1', position: 'end', color: t.textMuted, fontSize: 11 },
-          data: meetingLines,
-        },
-      },
       {
         // invisible series that gives the hidden axis its extent
         type: 'line',

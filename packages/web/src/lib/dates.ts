@@ -52,11 +52,9 @@ export function rangeLabel(r: Range): string {
   return `${left} – ${fmtLong(r.to)} (${days} ${days === 1 ? 'day' : 'days'})`
 }
 
-export type PresetKey = 'twoWeeks' | 'month' | 'threeMonths' | 'sinceMeeting' | 'all'
+export type PresetKey = 'twoWeeks' | 'month' | 'threeMonths' | 'all'
 
 export interface PresetContext {
-  /** sorted YYYY-MM-DD */
-  meetings: string[]
   /** start of full history */
   allFrom: number
 }
@@ -73,11 +71,6 @@ export function presetRange(key: PresetKey, ctx?: PresetContext, now = Date.now(
       const d = new Date(today)
       d.setMonth(d.getMonth() - 3)
       return { from: d.getTime(), to }
-    }
-    case 'sinceMeeting': {
-      const last = ctx?.meetings.at(-1)
-      const from = last ? parseYmd(last) : null
-      return from == null ? null : { from, to }
     }
     case 'all':
       return ctx ? { from: ctx.allFrom, to } : null

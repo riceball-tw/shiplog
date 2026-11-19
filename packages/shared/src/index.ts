@@ -79,8 +79,6 @@ export interface AppConfig {
   excludeFromStats: string[]
   /** only read history newer than this (ISO date or git --since string like "12 months ago") */
   since: string
-  /** dates of past 1:1 meetings (YYYY-MM-DD) */
-  meetings: string[]
   classifier: {
     /** extra keyword → type rules, regex source strings, checked before built-ins */
     keywords: Partial<Record<CommitType, string[]>>

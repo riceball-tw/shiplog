@@ -21,7 +21,6 @@ const option = computed(() => {
     topRepoIds: store.topRepoIds,
     otherColor: prefersDark.value ? OTHER_COLOR.dark : OTHER_COLOR.light,
     extent: store.extent,
-    meetings: store.meetings,
     theme: chartTheme(prefersDark.value),
   })
 })

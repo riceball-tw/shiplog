@@ -85,7 +85,6 @@ export const useAppStore = defineStore('app', () => {
   const isOther = (id: string) => colorAssignment.value.isOther(id)
   /** repos shown as lanes/series: included and not toggled off */
   const visibleRepos = computed(() => sortedRepos.value.filter((r) => r.included && !hiddenRepoIds.value.includes(r.id)))
-  const meetings = computed(() => [...(config.value?.meetings ?? [])].sort())
   /** full history span: config.since / first commit -> end of today */
   const extent = computed<Range>(() => {
     const first = timedCommits.value.at(-1)?.ts
@@ -166,25 +165,10 @@ export const useAppStore = defineStore('app', () => {
   function select(c: { repoId: string; hash: string } | null) {
     selectedKey.value = c ? commitKey(c) : null
   }
-  /** Append today's date to config.meetings (fresh GET then PUT; no duplicates). */
-  async function markTodayAsMeeting() {
-    try {
-      const cfg = await api.getConfig()
-      const today = ymd(Date.now())
-      if (!cfg.meetings.includes(today)) {
-        config.value = await api.putConfig({ ...cfg, meetings: [...cfg.meetings, today].sort() })
-      } else {
-        config.value = cfg
-      }
-      error.value = null
-    } catch (e) {
-      error.value = msg(e)
-    }
-  }
 
   return {
     repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
-    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, meetings, extent,
-    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, select, markTodayAsMeeting,
+    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
+    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, select,
   }
 })

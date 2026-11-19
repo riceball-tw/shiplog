@@ -40,7 +40,6 @@ export function defaultConfig(): AppConfig {
       '**/go.sum',
     ],
     since: '12 months ago',
-    meetings: [],
     classifier: { keywords: {} },
   }
 }
@@ -67,7 +66,6 @@ export function normalizeConfig(raw: Partial<AppConfig>): AppConfig {
     ignoreDirs: raw.ignoreDirs ?? d.ignoreDirs,
     excludeFromStats: raw.excludeFromStats ?? d.excludeFromStats,
     since: raw.since ?? d.since,
-    meetings: raw.meetings ?? d.meetings,
     classifier: { keywords: raw.classifier?.keywords ?? {} },
   }
 }
@@ -93,7 +91,6 @@ export async function loadConfig(): Promise<AppConfig> {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 async function isDir(p: string): Promise<boolean> {
   try {
@@ -126,10 +123,6 @@ export async function validateConfig(raw: unknown): Promise<string[]> {
   strList('ignoreDirs')
   strList('excludeFromStats')
   for (const e of strList('authorEmails') ?? []) if (!EMAIL_RE.test(e)) errs.push(`authorEmails: "${e}" is not a valid email`)
-  for (const m of strList('meetings') ?? []) {
-    if (!DATE_RE.test(m) || Number.isNaN(Date.parse(m)) || new Date(m).toISOString().slice(0, 10) !== m)
-      errs.push(`meetings: "${m}" is not a valid YYYY-MM-DD date`)
-  }
   if (c.scanDepth !== undefined && (!Number.isInteger(c.scanDepth) || (c.scanDepth as number) < 1 || (c.scanDepth as number) > 10))
     errs.push('scanDepth must be an integer between 1 and 10')
   if (c.since !== undefined && (typeof c.since !== 'string' || !c.since.trim())) errs.push('since must be a non-empty string')
