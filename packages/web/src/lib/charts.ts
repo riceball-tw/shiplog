@@ -63,6 +63,12 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
     m.set(b, (m.get(b) ?? 0) + 1)
   }
 
+  // ECharts only stacks bars correctly when every series has a point for every bucket;
+  // sparse series stack against the wrong neighbours and float. Densify with zeros.
+  // Step via bucketOf(b + step + half) rather than b + step so DST shifts can't drift the keys.
+  const buckets: number[] = []
+  for (let b = bucketOf(extent.from); b <= extent.to; b = bucketOf(b + 3 * half)) buckets.push(b)
+
   const bars = a.repos.map((r) => ({
     type: 'bar' as const,
     name: r.name,
@@ -73,8 +79,11 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
     barMinWidth: 2,
     itemStyle: { color: a.colors.get(r.id), borderColor: t.surface, borderWidth: 1 },
     emphasis: { focus: 'none' as const },
-    // [bar center, count, bucket start]
-    data: [...(counts.get(r.id) ?? [])].sort((x, y) => x[0] - y[0]).map(([b, n]) => [b + half, n, b]),
+    // [bar center, count, bucket start]; zero buckets drop the border so they don't draw a hairline
+    data: buckets.map((b) => {
+      const n = counts.get(r.id)?.get(b) ?? 0
+      return n ? [b + half, n, b] : { value: [b + half, 0, b], itemStyle: { borderWidth: 0 } }
+    }),
   }))
 
   const meetingLines = a.meetings
@@ -110,13 +119,14 @@ export function buildOverviewOption(a: OverviewArgs): EChartsOption {
       trigger: 'axis',
       axisPointer: { type: 'line', snap: true, lineStyle: { color: t.textMuted, width: 1 } },
       formatter: (raw: unknown) => {
-        const ps = (raw as any[]).filter((p) => p.seriesType === 'bar' && p.data?.[1] > 0)
+        // p.value (not p.data): zero buckets are { value, itemStyle } objects
+        const ps = (raw as any[]).filter((p) => p.seriesType === 'bar' && p.value?.[1] > 0)
         if (!ps.length) return ''
-        const start = ps[0].data[2] as number
-        const bucket = ps.filter((p) => p.data[2] === start)
-        const total = bucket.reduce((s, p) => s + p.data[1], 0)
+        const start = ps[0].value[2] as number
+        const bucket = ps.filter((p) => p.value[2] === start)
+        const total = bucket.reduce((s, p) => s + p.value[1], 0)
         const title = weekly ? `Week of ${fmtLong(start)}` : fmtLong(start)
-        const rows = bucket.map((p) => `<div>${dot(p.color)}${esc(p.seriesName)}: <b>${p.data[1]}</b></div>`).join('')
+        const rows = bucket.map((p) => `<div>${dot(p.color)}${esc(p.seriesName)}: <b>${p.value[1]}</b></div>`).join('')
         return `<div style="font-weight:600;margin-bottom:4px">${title}</div>${rows}<div style="margin-top:4px;color:${t.textMuted}">${total} commits</div>`
       },
     },
