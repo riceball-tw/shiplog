@@ -1,5 +1,13 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { loadPref, savePref } from './prefs'
+
+/** Desktop sidebar (lg+) open state, remembered across reloads. */
+export const sidebarOpen = ref(loadPref('oo.sidebar', ['open', 'closed'] as const, 'open') === 'open')
+watch(sidebarOpen, (v) => savePref('oo.sidebar', v ? 'open' : 'closed'))
+
+/** Mobile (<lg) sidebar sheet; not persisted. */
+export const mobileSidebarOpen = ref(false)
 
 /** Set by the (lazy) settings panel so the header can show an "unsaved" dot while the sheet is closed. */
 export const settingsDirty = ref(false)
@@ -24,6 +32,7 @@ export function useSettingsSheet() {
     SETTINGS_SECTIONS.includes(param.value as SettingsSection) ? (param.value as SettingsSection) : null,
   )
   function openSettings(s?: SettingsSection) {
+    mobileSidebarOpen.value = false
     router.replace({ path: '/', query: { ...route.query, settings: s ?? '1' } })
   }
   function closeSettings() {

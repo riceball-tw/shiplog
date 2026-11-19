@@ -5,7 +5,7 @@ import { COMMIT_TYPE_COLORS } from './commitTypes'
 import { DAY, dayStart, fmtLong, weekStart } from './dates'
 
 export const OVERVIEW_HEIGHT = 140
-export const LANE_HEIGHT = 60
+export const LANE_HEIGHT = 44
 export const SWIMLANE_AXIS_HEIGHT = 36
 
 export interface ChartTheme {

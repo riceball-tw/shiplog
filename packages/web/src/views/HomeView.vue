@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useElementSize } from '@vueuse/core'
 import { useAppStore } from '../stores/app'
 import { dayEnd, parseYmd, ymd } from '../lib/dates'
 import RangePresets from '../components/RangePresets.vue'
 import OverviewChart from '../components/OverviewChart.vue'
 import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
-import RepoList from '../components/RepoList.vue'
 import CommitList from '../components/CommitList.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { loadPref, savePref } from '../lib/prefs'
@@ -52,12 +53,32 @@ watch(
     if (!written.has(`${f}|${t}`)) readUrl()
   },
 )
+
+// Summary and Commits sit side by side once the content area is wide enough for two readable columns
+const WIDE_PX = 1280
+const results = useTemplateRef<HTMLElement>('results')
+const { width: resultsWidth } = useElementSize(results)
+const wide = computed(() => resultsWidth.value >= WIDE_PX)
+
+// clicking a dot in the lanes reveals that commit in the list
+watch(
+  () => store.selectedKey,
+  (k) => {
+    if (k && !wide.value) tab.value = 'commits'
+  },
+)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <RangePresets />
-    <Card class="gap-0 overflow-hidden py-0">
+  <Alert v-if="store.error && !store.config" variant="destructive" class="mx-auto max-w-xl">
+    <AlertDescription>{{ store.error }}</AlertDescription>
+  </Alert>
+  <div v-else class="space-y-4">
+    <Card class="gap-0 overflow-hidden py-0" data-testid="timeline">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2.5">
+        <RangeStats />
+        <RangePresets class="ml-auto" />
+      </div>
       <p class="px-4 pt-2 text-xs text-muted-foreground">
         Drag the handles or the highlighted window to choose a range · ⌘/Ctrl + scroll over the lanes to zoom
       </p>
@@ -66,19 +87,20 @@ watch(
         <SwimlaneChart />
       </div>
     </Card>
-    <RangeStats />
-    <div class="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <RepoList />
-      <div class="min-w-0 space-y-3">
-        <Tabs v-model="tab">
-          <TabsList variant="line" class="w-full justify-start border-b">
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="summary" class="mt-3"><SummaryPanel /></TabsContent>
-          <TabsContent value="commits" class="mt-3"><CommitList /></TabsContent>
-        </Tabs>
+
+    <div ref="results" data-testid="results">
+      <div v-if="wide" class="grid grid-cols-2 items-start gap-4" data-layout="split">
+        <SummaryPanel />
+        <CommitList scroll class="sticky top-16" />
       </div>
+      <Tabs v-else v-model="tab" data-layout="tabs">
+        <TabsList variant="line" class="w-full justify-start border-b">
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="summary" class="mt-3"><SummaryPanel /></TabsContent>
+        <TabsContent value="commits" class="mt-3"><CommitList /></TabsContent>
+      </Tabs>
     </div>
   </div>
 </template>

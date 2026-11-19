@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import type { Commit, Repo, ScanResult, AppConfig } from '@one-on-one/shared'
 import * as api from '../api'
 import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
@@ -29,6 +29,16 @@ function parseSince(s: string): number | null {
   return d.getTime()
 }
 
+const HIDDEN_KEY = 'oo.hiddenRepos'
+function loadHidden(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 export const commitKey = (c: { repoId: string; hash: string }) => `${c.repoId}:${c.hash}`
 
 export const useAppStore = defineStore('app', () => {
@@ -41,7 +51,15 @@ export const useAppStore = defineStore('app', () => {
   const error = ref<string | null>(null)
   const lastScan = ref<ScanResult | null>(null)
   const range = ref<Range>(presetRange('twoWeeks')!)
-  const hiddenRepoIds = ref<string[]>([])
+  const hiddenRepoIds = ref<string[]>(loadHidden())
+  // view filter only (no rescan): remembered per browser
+  watch(hiddenRepoIds, (v) => {
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(v))
+    } catch {
+      /* ignore */
+    }
+  })
   const selectedKey = ref<string | null>(null)
 
   const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -162,6 +180,10 @@ export const useAppStore = defineStore('app', () => {
     if (i >= 0) hiddenRepoIds.value = hiddenRepoIds.value.filter((x) => x !== id)
     else hiddenRepoIds.value = [...hiddenRepoIds.value, id]
   }
+  /** replace the whole hidden set (show all / hide all / solo) */
+  function setHiddenRepoIds(ids: string[]) {
+    hiddenRepoIds.value = [...new Set(ids)]
+  }
   function select(c: { repoId: string; hash: string } | null) {
     selectedKey.value = c ? commitKey(c) : null
   }
@@ -169,6 +191,6 @@ export const useAppStore = defineStore('app', () => {
   return {
     repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
     timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
-    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, select,
+    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select,
   }
 })

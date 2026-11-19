@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAppStore } from '../stores/app'
 import { type PresetKey, presetRange, ymd } from '../lib/dates'
 
@@ -29,15 +29,13 @@ function pick(key: PresetKey) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
-    <Button
-      v-for="p in presets"
-      :key="p.key"
-      :variant="active === p.key ? 'default' : 'outline'"
-      :disabled="!ranges.get(p.key)"
-      @click="pick(p.key)"
-    >
+  <ToggleGroup
+    type="single" variant="outline" size="sm" aria-label="Range presets"
+    :model-value="active ?? ''"
+    @update:model-value="(v) => v && pick(v as PresetKey)"
+  >
+    <ToggleGroupItem v-for="p in presets" :key="p.key" :value="p.key" :disabled="!ranges.get(p.key)" class="px-2.5 text-xs">
       {{ p.label }}
-    </Button>
-  </div>
+    </ToggleGroupItem>
+  </ToggleGroup>
 </template>

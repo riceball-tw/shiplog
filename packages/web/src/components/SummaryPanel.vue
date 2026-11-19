@@ -80,7 +80,7 @@ async function copy() {
 </script>
 
 <template>
-  <Card class="gap-0 py-0">
+  <Card class="@container gap-0 py-0" data-testid="summary">
     <!-- controls -->
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3">
       <div class="flex items-center gap-2 text-sm">
@@ -99,7 +99,7 @@ async function copy() {
         <Checkbox id="hide-noise" v-model="hideNoise" />
         <Label for="hide-noise" class="cursor-pointer font-normal">Hide noise (chore/ci/style/build)</Label>
       </div>
-      <Button class="ml-auto" :disabled="!summary.totals.commits" @click="copy">
+      <Button class="ml-auto" size="sm" :disabled="!summary.totals.commits" @click="copy">
         {{ copied ? 'Copied ✓' : 'Copy as Markdown' }}
       </Button>
     </div>
@@ -167,7 +167,7 @@ async function copy() {
       </div>
 
       <!-- Repo view -->
-      <div v-else class="grid gap-3 md:grid-cols-2">
+      <div v-else class="grid gap-3 @xl:grid-cols-2 @5xl:grid-cols-3">
         <div v-for="r in summary.byRepo" :key="r.repoId" class="rounded-md border p-3">
           <h3 class="flex items-center gap-2 text-sm font-semibold">
             <span class="size-3 rounded-sm" :style="{ background: color(r.repoId) }" />
@@ -189,7 +189,7 @@ async function copy() {
       <!-- Top areas -->
       <div v-if="summary.topDirs.length">
         <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top areas</h3>
-        <ul class="grid gap-x-6 gap-y-0.5 text-sm sm:grid-cols-2">
+        <ul class="grid gap-x-6 gap-y-0.5 text-sm @xl:grid-cols-2">
           <li v-for="d in summary.topDirs" :key="d.repoId + d.dir" class="flex items-center gap-2">
             <span class="size-2 shrink-0 rounded-sm" :style="{ background: color(d.repoId) }" />
             <span class="min-w-0 flex-1 truncate font-mono text-xs" :title="repoName(d.repoId) + ' / ' + d.dir">{{ repoName(d.repoId) }}/{{ d.dir }}</span>
