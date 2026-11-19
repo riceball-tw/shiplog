@@ -121,15 +121,21 @@ const typeBadge = (t: CommitType) => COMMIT_TYPE_COLORS[t].badge
       <!-- Ticket view -->
       <ul v-if="groupBy === 'ticket'" class="divide-y divide-slate-100 rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
         <li v-for="g in summary.byTicket" :key="g.key ?? '__none'">
-          <button class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50" :aria-expanded="open.has(g.key ?? '__none')" @click="toggle(g.key ?? '__none')">
-            <span class="w-3 shrink-0 text-slate-400">{{ open.has(g.key ?? '__none') ? '▾' : '▸' }}</span>
-            <span class="shrink-0 font-mono font-semibold" :class="g.key === null && 'text-slate-500 dark:text-slate-400'">{{ g.key ?? 'No ticket' }}</span>
-            <span class="min-w-0 flex-1 truncate" :title="g.title">{{ g.key === null ? '' : g.title }}</span>
-            <span v-for="[t] in typeCounts(g.items)" :key="t" class="rounded px-1.5 py-0.5 text-xs font-medium" :class="typeBadge(t)">{{ t }}</span>
-            <span v-for="r in g.repoIds" :key="r" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              <span class="size-2 rounded-sm" :style="{ background: color(r) }" />{{ repoName(r) }}
+          <button class="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50" :aria-expanded="open.has(g.key ?? '__none')" @click="toggle(g.key ?? '__none')">
+            <span class="mt-0.5 w-3 shrink-0 text-slate-400">{{ open.has(g.key ?? '__none') ? '▾' : '▸' }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="line-clamp-2 break-words" :title="g.title">
+                <span class="font-mono font-semibold" :class="g.key === null && 'text-slate-500 dark:text-slate-400'">{{ g.key ?? 'No ticket' }}</span>
+                <span v-if="g.key !== null && g.title" class="ml-2">{{ g.title }}</span>
+              </span>
+              <span class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span v-for="[t] in typeCounts(g.items)" :key="t" class="rounded px-1.5 py-0.5 font-medium" :class="typeBadge(t)">{{ t }}</span>
+                <span v-for="r in g.repoIds" :key="r" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <span class="size-2 rounded-sm" :style="{ background: color(r) }" />{{ repoName(r) }}
+                </span>
+                <span>· {{ g.items.length }} {{ g.items.length === 1 ? 'commit' : 'commits' }} · {{ span(g.first, g.last) }}</span>
+              </span>
             </span>
-            <span class="shrink-0 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{{ g.items.length }} {{ g.items.length === 1 ? 'commit' : 'commits' }} · {{ span(g.first, g.last) }}</span>
           </button>
           <ul v-if="open.has(g.key ?? '__none')" class="space-y-1 bg-slate-50 px-3 py-2 pl-9 text-sm dark:bg-slate-950/40">
             <li v-for="it in g.items" :key="it.commit.repoId + it.commit.hash" class="flex items-center gap-2">
