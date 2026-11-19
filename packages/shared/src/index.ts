@@ -103,6 +103,7 @@ export interface ScanResult {
 // POST /api/scan                           -> ScanResult
 // GET  /api/commits?from=&to=&repos=a,b    -> Commit[]  (from/to ISO dates, inclusive; repos optional)
 // GET  /api/heatmap?from=&to=&repos=       -> HeatmapRow[]
+// GET  /api/fs/list?path=<abs or ~>        -> DirListing  (subfolders only; default home; 404 missing, 403 unreadable, 400 not a dir; body { error })
 // All /api/* requests must carry a loopback Host header (127.0.0.1 / localhost, any port), else 403.
 
 export interface AuthorInfo {
@@ -124,4 +125,22 @@ export interface HeatmapRow {
   day: string
   repoId: string
   commits: number
+}
+
+export interface DirEntry {
+  name: string
+  /** absolute path */
+  path: string
+  /** contains a .git dir or file */
+  isGitRepo: boolean
+}
+
+export interface DirListing {
+  /** absolute, resolved path that was listed */
+  path: string
+  /** null at filesystem root */
+  parent: string | null
+  home: string
+  /** subdirectories only, hidden ones omitted, case-insensitively sorted, capped at 2000 */
+  entries: DirEntry[]
 }

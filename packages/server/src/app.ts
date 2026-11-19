@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import type { AppConfig, AuthorInfo, Repo, ScanResult } from '@one-on-one/shared'
 import { loadConfig, saveConfig, validateConfig } from './config.js'
 import { discoverRepos } from './discovery.js'
+import { FsListError, listDir } from './fs-list.js'
 import { readAuthors } from './gitlog.js'
 import { scan } from './scan.js'
 import type { CommitStore } from './store.js'
@@ -69,6 +70,14 @@ export function createApp({ store, webDist, allowMissingHost }: AppOptions) {
     const saved = await saveConfig(body as AppConfig)
     repos = null
     return c.json(saved)
+  })
+  app.get('/api/fs/list', async (c) => {
+    try {
+      return c.json(await listDir(c.req.query('path')))
+    } catch (e) {
+      if (e instanceof FsListError) return c.json({ error: e.message }, e.status)
+      throw e
+    }
   })
   app.get('/api/repos', async (c) => c.json(await getRepos()))
   app.get('/api/authors', async (c) => {
