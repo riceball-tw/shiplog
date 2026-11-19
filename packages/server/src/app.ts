@@ -3,7 +3,7 @@ import path from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import type { AppConfig, AuthorInfo, Repo, ScanResult } from '@one-on-one/shared'
-import { loadConfig, saveConfig } from './config.js'
+import { loadConfig, saveConfig, validateConfig } from './config.js'
 import { discoverRepos } from './discovery.js'
 import { readAuthors } from './gitlog.js'
 import { scan } from './scan.js'
@@ -43,7 +43,15 @@ export function createApp({ store, webDist }: AppOptions) {
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.get('/api/config', async (c) => c.json(await loadConfig()))
   app.put('/api/config', async (c) => {
-    const saved = await saveConfig((await c.req.json()) as AppConfig)
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'invalid config', details: ['body is not valid JSON'] }, 400)
+    }
+    const details = await validateConfig(body)
+    if (details.length) return c.json({ error: 'invalid config', details }, 400)
+    const saved = await saveConfig(body as AppConfig)
     repos = null
     return c.json(saved)
   })

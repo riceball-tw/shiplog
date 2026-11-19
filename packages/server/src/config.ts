@@ -91,3 +91,65 @@ export async function loadConfig(): Promise<AppConfig> {
   if (email) config.authorEmails = [email]
   return saveConfig(config)
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+async function isDir(p: string): Promise<boolean> {
+  try {
+    return (await fs.stat(p)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/** Returns human-readable problems; empty array means the config is valid. */
+export async function validateConfig(raw: unknown): Promise<string[]> {
+  const errs: string[] = []
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ['body must be a JSON object']
+  const c = raw as Record<string, unknown>
+  const strList = (k: string): string[] | null => {
+    const v = c[k]
+    if (v === undefined) return []
+    if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) {
+      errs.push(`${k} must be an array of strings`)
+      return null
+    }
+    return v as string[]
+  }
+  for (const k of ['scanRoots', 'pinnedRepos'] as const) {
+    for (const p of strList(k) ?? []) {
+      if (!(await isDir(path.resolve(expandHome(p))))) errs.push(`${k}: "${p}" does not exist or is not a directory`)
+    }
+  }
+  strList('excludedRepos')
+  strList('ignoreDirs')
+  strList('excludeFromStats')
+  for (const e of strList('authorEmails') ?? []) if (!EMAIL_RE.test(e)) errs.push(`authorEmails: "${e}" is not a valid email`)
+  for (const m of strList('meetings') ?? []) {
+    if (!DATE_RE.test(m) || Number.isNaN(Date.parse(m)) || new Date(m).toISOString().slice(0, 10) !== m)
+      errs.push(`meetings: "${m}" is not a valid YYYY-MM-DD date`)
+  }
+  if (c.scanDepth !== undefined && (!Number.isInteger(c.scanDepth) || (c.scanDepth as number) < 1 || (c.scanDepth as number) > 10))
+    errs.push('scanDepth must be an integer between 1 and 10')
+  if (c.since !== undefined && (typeof c.since !== 'string' || !c.since.trim())) errs.push('since must be a non-empty string')
+  const kw = (c.classifier as { keywords?: unknown } | undefined)?.keywords
+  if (kw !== undefined) {
+    if (!kw || typeof kw !== 'object' || Array.isArray(kw)) errs.push('classifier.keywords must be an object')
+    else
+      for (const [type, list] of Object.entries(kw)) {
+        if (!Array.isArray(list) || list.some((x) => typeof x !== 'string')) {
+          errs.push(`classifier.keywords.${type} must be an array of strings`)
+          continue
+        }
+        for (const src of list as string[]) {
+          try {
+            new RegExp(src, 'i')
+          } catch (e) {
+            errs.push(`classifier.keywords.${type}: invalid regex "${src}" (${(e as Error).message})`)
+          }
+        }
+      }
+  }
+  return errs
+}

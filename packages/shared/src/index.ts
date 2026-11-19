@@ -112,6 +112,12 @@ export interface AuthorInfo {
   names?: string[]
 }
 
+/** Body of a 400 response from PUT /api/config */
+export interface ConfigError {
+  error: string
+  details: string[]
+}
+
 export interface HeatmapRow {
   /** YYYY-MM-DD (local time) */
   day: string
