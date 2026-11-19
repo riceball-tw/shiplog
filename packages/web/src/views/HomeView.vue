@@ -10,6 +10,7 @@ import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
 import CommitList from '../components/CommitList.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
+import SetupGuide from '../components/SetupGuide.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -54,6 +55,12 @@ watch(
   },
 )
 
+/** first run: nothing to scan or nobody to match -> show the setup checklist instead of an empty timeline */
+const needsSetup = computed(() => {
+  const c = store.config
+  return !!c && ((!c.scanRoots.length && !c.pinnedRepos.length) || !c.authorEmails.length)
+})
+
 // Summary and Commits sit side by side once the content area is wide enough for two readable columns
 const WIDE_PX = 1280
 const results = useTemplateRef<HTMLElement>('results')
@@ -73,6 +80,7 @@ watch(
   <Alert v-if="store.error && !store.config" variant="destructive" class="mx-auto max-w-xl">
     <AlertDescription>{{ store.error }}</AlertDescription>
   </Alert>
+  <SetupGuide v-else-if="needsSetup" />
   <div v-else class="space-y-4">
     <Card class="gap-0 overflow-hidden py-0" data-testid="timeline">
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2.5">
