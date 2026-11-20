@@ -1,6 +1,6 @@
 # shiplog
 
-A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus one swimlane per repo. A summary panel groups the commits in the selected range by type or ticket and exports a Markdown pitch you can paste into your notes.
+A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus one swimlane per repo. A summary panel groups the commits in the selected range by theme, ticket, type or repo and exports a Markdown pitch you can paste into your notes.
 
 ## Requirements
 
@@ -54,11 +54,23 @@ Each commit gets a type (`feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `ci`
 
 Ticket ids found in subjects are collected and can be used to group the summary.
 
+## Themes and highlights
+
+A review is told as a handful of **themes** ("Payments migration", "Checkout performance"), each with a one-line **outcome** ("cut checkout p95 from 800 to 300 ms"). Git can't know impact, so you type the outcomes; shiplog makes the grouping fast.
+
+- In the Summary panel, **Group by -> Theme** (the default) shows one card per theme with work in the selected range: editable name and outcome, time span, repos, ticket/commit counts, its highlights, and its tickets (collapsed).
+- Work not in any theme is listed under **Unassigned**; use **Add to theme** on a ticket (or on a no-ticket group) to file it, or create a theme on the spot. Themes can be reordered and deleted (deleting only removes the grouping, never commits). Themes with no work in the range are collapsed at the bottom.
+- A commit belongs to the first theme (in theme order) that lists it explicitly, else one that lists one of its tickets, else one that lists its repo. Each commit is in at most one theme.
+- **Highlights**: star the handful of commits worth mentioning, in the Commits list or in an expanded ticket. Starred commits lead their theme in the summary and the export.
+- **Copy as Markdown** with Theme grouping exports each theme as a heading with its outcome, highlights first, then its tickets, then an "Other work" list.
+
+Themes and highlights are saved to `notes.json` next to the config (`~/.shiplog/notes.json`, or `$SHIPLOG_HOME/notes.json`). Commits are referenced by `<repoId>:<hash>`; the API is `GET`/`PUT /api/notes`.
+
 ## Privacy and security
 
 - The server binds to `127.0.0.1` only.
 - Requests whose `Host` header is not loopback (`127.0.0.1`, `localhost`, `[::1]`) are rejected with 403, which blocks DNS-rebinding attacks from web pages.
-- Commits are held in memory only; they are re-read from git on each scan and never written to disk by this app. Only the config file is persisted.
+- Commits are held in memory only; they are re-read from git on each scan and never written to disk by this app. Only the config file and your notes (`notes.json`: theme names, outcomes, and the tickets/commit ids you assigned or starred) are persisted, both locally.
 - Nothing is sent off your machine.
 
 ## Project layout

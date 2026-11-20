@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import type { Commit, Repo, ScanResult, AppConfig } from '@shiplog/shared'
+import { commitKey, type Commit, type Notes, type Repo, type ScanResult, type AppConfig, type Theme } from '@shiplog/shared'
 import * as api from '../api'
 import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
 import { assignRepoColors } from '../lib/repoColors'
@@ -39,7 +39,11 @@ function loadHidden(): string[] {
   }
 }
 
-export const commitKey = (c: { repoId: string; hash: string }) => `${c.repoId}:${c.hash}`
+export { commitKey }
+
+const SAVE_DELAY = 500
+const newThemeId = () => (globalThis.crypto?.randomUUID?.() ?? `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`)
+const without = (list: string[], drop: string[]) => list.filter((x) => !drop.includes(x))
 
 export const useAppStore = defineStore('app', () => {
   const repos = ref<Repo[]>([])
@@ -61,6 +65,10 @@ export const useAppStore = defineStore('app', () => {
     }
   })
   const selectedKey = ref<string | null>(null)
+  const notes = ref<Notes>({ themes: [], highlights: [] })
+  /** don't PUT before the first GET succeeded: that would overwrite saved notes with empty ones */
+  let notesLoaded = false
+  let saveTimer: ReturnType<typeof setTimeout> | undefined
 
   const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -138,8 +146,86 @@ export const useAppStore = defineStore('app', () => {
       loading.value = false
     }
   }
+  async function loadNotes() {
+    try {
+      notes.value = await api.getNotes()
+      notesLoaded = true
+    } catch (e) {
+      error.value = msg(e)
+    }
+  }
   async function init() {
-    await Promise.all([loadRepos(), loadConfig(), loadCommits()])
+    await Promise.all([loadRepos(), loadConfig(), loadCommits(), loadNotes()])
+  }
+
+  // ---- notes: themes + highlights, saved debounced ----
+  async function flushNotes() {
+    clearTimeout(saveTimer)
+    if (!notesLoaded) return
+    try {
+      await api.putNotes(notes.value)
+    } catch (e) {
+      error.value = `Could not save notes: ${msg(e)}`
+    }
+  }
+  /** apply a change to the notes and schedule a save */
+  function editNotes(fn: (n: Notes) => Notes) {
+    notes.value = fn(notes.value)
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(flushNotes, SAVE_DELAY)
+  }
+  const patchTheme = (id: string, fn: (t: Theme) => Theme) =>
+    editNotes((n) => ({ ...n, themes: n.themes.map((t) => (t.id === id ? fn(t) : t)) }))
+
+  function createTheme(name = 'New theme'): string {
+    const id = newThemeId()
+    editNotes((n) => ({ ...n, themes: [...n.themes, { id, name, outcome: '', tickets: [], commits: [], repoIds: [] }] }))
+    return id
+  }
+  const renameTheme = (id: string, name: string) => patchTheme(id, (t) => ({ ...t, name }))
+  const setOutcome = (id: string, outcome: string) => patchTheme(id, (t) => ({ ...t, outcome }))
+  const deleteTheme = (id: string) => editNotes((n) => ({ ...n, themes: n.themes.filter((t) => t.id !== id) }))
+  /** move theme `id` to the position currently held by `targetId` */
+  function reorderTheme(id: string, targetId: string) {
+    editNotes((n) => {
+      const from = n.themes.findIndex((t) => t.id === id)
+      const to = n.themes.findIndex((t) => t.id === targetId)
+      if (from < 0 || to < 0 || from === to) return n
+      const themes = [...n.themes]
+      themes.splice(to, 0, ...themes.splice(from, 1))
+      return { ...n, themes }
+    })
+  }
+  /** add tickets / commit keys / repo ids to a theme (they leave any other theme) */
+  function assign(id: string, what: { tickets?: string[]; commits?: string[]; repoIds?: string[] }) {
+    const { tickets = [], commits = [], repoIds = [] } = what
+    editNotes((n) => ({
+      ...n,
+      themes: n.themes.map((t) => {
+        const own = t.id === id
+        return {
+          ...t,
+          tickets: [...new Set([...without(t.tickets, tickets), ...(own ? tickets : [])])],
+          commits: [...new Set([...without(t.commits, commits), ...(own ? commits : [])])],
+          repoIds: [...new Set([...without(t.repoIds, repoIds), ...(own ? repoIds : [])])],
+        }
+      }),
+    }))
+  }
+  function unassign(id: string, what: { tickets?: string[]; commits?: string[]; repoIds?: string[] }) {
+    patchTheme(id, (t) => ({
+      ...t,
+      tickets: without(t.tickets, what.tickets ?? []),
+      commits: without(t.commits, what.commits ?? []),
+      repoIds: without(t.repoIds, what.repoIds ?? []),
+    }))
+  }
+  const isHighlighted = (key: string) => notes.value.highlights.includes(key)
+  function toggleHighlight(key: string) {
+    editNotes((n) => ({
+      ...n,
+      highlights: n.highlights.includes(key) ? n.highlights.filter((k) => k !== key) : [...n.highlights, key],
+    }))
   }
   async function scan() {
     scanning.value = true
@@ -189,8 +275,10 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey,
+    repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey, notes,
     timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
-    loadRepos, loadConfig, loadCommits, init, scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select,
+    loadRepos, loadConfig, loadCommits, loadNotes, init,
+    flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, isHighlighted, toggleHighlight,
+    scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select,
   }
 })

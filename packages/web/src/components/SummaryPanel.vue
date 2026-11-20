@@ -2,11 +2,16 @@
 import { computed, ref, watch } from 'vue'
 import type { CommitType } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
-import { fmtShort, rangeLabel } from '../lib/dates'
+import { commitKey } from '@shiplog/shared'
+import { rangeLabel } from '../lib/dates'
 import { loadPref, savePref } from '../lib/prefs'
-import { summarize, toMarkdown, TYPE_LABELS, type Item } from '../lib/summary'
+import { summarize, toMarkdown, TYPE_LABELS } from '../lib/summary'
+import { groupByTheme } from '../lib/themes'
 import { prefersDark } from '../lib/theme'
 import TypeBadge from './TypeBadge.vue'
+import TicketRow from './TicketRow.vue'
+import ThemeCard from './ThemeCard.vue'
+import AddToTheme from './AddToTheme.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,14 +20,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { ChevronDown, ChevronRight } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Plus, Star } from '@lucide/vue'
 
-const GROUPS = ['ticket', 'type', 'repo'] as const
+const GROUPS = ['theme', 'ticket', 'type', 'repo'] as const
 type GroupBy = (typeof GROUPS)[number]
-const GROUP_LABELS: Record<GroupBy, string> = { ticket: 'Ticket', type: 'Type', repo: 'Repo' }
+const GROUP_LABELS: Record<GroupBy, string> = { theme: 'Theme', ticket: 'Ticket', type: 'Type', repo: 'Repo' }
 
 const store = useAppStore()
-const groupBy = ref<GroupBy>(loadPref('oo.summary.groupBy', GROUPS, 'ticket'))
+const groupBy = ref<GroupBy>(loadPref('oo.summary.groupBy', GROUPS, 'theme'))
 const hideNoise = ref(loadPref('oo.summary.hideNoise', ['1', '0'] as const, '1') === '1')
 watch(groupBy, (v) => savePref('oo.summary.groupBy', v))
 watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
@@ -30,34 +35,34 @@ watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
 const summary = computed(() => summarize(store.commitsInRange, { hideNoise: hideNoise.value }))
 const repoNames = computed(() => Object.fromEntries(store.repos.map((r) => [r.id, r.name])))
 const repoName = (id: string) => repoNames.value[id] ?? id
+const themed = computed(() => groupByTheme(summary.value.items, store.notes))
 const markdown = computed(() =>
   toMarkdown(summary.value, {
     rangeLabel: rangeLabel(store.range),
-    groupBy: groupBy.value === 'ticket' ? 'ticket' : 'type',
+    groupBy: groupBy.value === 'theme' || groupBy.value === 'ticket' ? groupBy.value : 'type',
     repoNames: repoNames.value,
+    themes: themed.value,
   }),
 )
+const starred = (it: { commit: { repoId: string; hash: string } }) => store.isHighlighted(commitKey(it.commit))
+const repoStars = (repoId: string) => store.notes.highlights.filter((k) => k.startsWith(repoId + ':')).length
+/** theme card order neighbours, so up/down move relative to what is on screen */
+const cardIds = computed(() => themed.value.cards.map((c) => c.theme.id))
+function addTo(themeId: string | null, what: { tickets?: string[]; commits?: string[] }) {
+  if (themeId === null) {
+    const name = window.prompt('Theme name')?.trim()
+    if (!name) return
+    themeId = store.createTheme(name)
+  }
+  store.assign(themeId, what)
+}
+const showEmpty = ref(false)
+
 const nf = (n: number) => n.toLocaleString()
 const color = (id: string) => {
   const c = store.repoColors.get(id)
   return c ? (prefersDark.value ? c.dark : c.light) : '#94a3b8'
 }
-const span = (a: number, b: number) => (fmtShort(a) === fmtShort(b) ? fmtShort(a) : `${fmtShort(a)} – ${fmtShort(b)}`)
-const typeCounts = (items: Item[]) => {
-  const m = new Map<CommitType, number>()
-  for (const i of items) m.set(i.commit.classification.type, (m.get(i.commit.classification.type) ?? 0) + 1)
-  return [...m]
-}
-
-// expand state for ticket rows
-const open = ref(new Set<string>())
-const toggle = (k: string) => {
-  const s = new Set(open.value)
-  if (!s.delete(k)) s.add(k)
-  open.value = s
-}
-watch(() => store.commitsInRange, () => (open.value = new Set()))
-
 const showPreview = ref(false)
 const copied = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -115,33 +120,59 @@ async function copy() {
         {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
       </p>
 
-      <!-- Ticket view -->
-      <ul v-if="groupBy === 'ticket'" class="divide-y rounded-md border">
-        <li v-for="g in summary.byTicket" :key="g.key ?? '__none'">
-          <button class="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50" :aria-expanded="open.has(g.key ?? '__none')" @click="toggle(g.key ?? '__none')">
-            <span class="mt-0.5 w-3 shrink-0 text-muted-foreground">{{ open.has(g.key ?? '__none') ? '▾' : '▸' }}</span>
-            <span class="min-w-0 flex-1">
-              <span class="line-clamp-2 break-words" :title="g.title">
-                <span class="font-mono font-semibold" :class="g.key === null && 'text-muted-foreground'">{{ g.key ?? 'No ticket' }}</span>
-                <span v-if="g.key !== null && g.title" class="ml-2">{{ g.title }}</span>
-              </span>
-              <span class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-                <TypeBadge v-for="[t] in typeCounts(g.items)" :key="t" :type="t" />
-                <Badge v-for="r in g.repoIds" :key="r" variant="secondary">
-                  <span class="size-2 rounded-sm" :style="{ background: color(r) }" />{{ repoName(r) }}
-                </Badge>
-                <span>· {{ g.items.length }} {{ g.items.length === 1 ? 'commit' : 'commits' }} · {{ span(g.first, g.last) }}</span>
-              </span>
-            </span>
-          </button>
-          <ul v-if="open.has(g.key ?? '__none')" class="space-y-1 bg-muted/40 px-3 py-2 pl-9 text-sm">
-            <li v-for="it in g.items" :key="it.commit.repoId + it.commit.hash" class="flex items-center gap-2">
-              <span class="w-14 shrink-0 text-xs text-muted-foreground">{{ fmtShort(it.ts) }}</span>
-              <TypeBadge class="shrink-0" :type="it.commit.classification.type" />
-              <span class="min-w-0 flex-1 truncate" :title="it.commit.subject">{{ it.title }}</span>
-              <span v-if="g.key === null && it.commit.classification.scope" class="shrink-0 text-xs text-muted-foreground">{{ it.commit.classification.scope }}</span>
+      <!-- Theme view -->
+      <div v-if="groupBy === 'theme'" class="space-y-4">
+        <p v-if="!store.notes.themes.length" class="text-sm text-muted-foreground">
+          Themes are the handful of stories you tell in a review. Create one, write its outcome, then add tickets to it below.
+        </p>
+        <ThemeCard
+          v-for="(c, i) in themed.cards"
+          :key="c.theme.id"
+          :theme="c.theme"
+          :data="c"
+          :color="color"
+          :repo-name="repoName"
+          :can-up="i > 0"
+          :can-down="i < themed.cards.length - 1"
+          @up="store.reorderTheme(c.theme.id, cardIds[i - 1]!)"
+          @down="store.reorderTheme(c.theme.id, cardIds[i + 1]!)"
+        />
+
+        <Collapsible v-if="themed.empty.length" v-model:open="showEmpty" class="space-y-3">
+          <CollapsibleTrigger as-child>
+            <Button variant="link" class="h-auto px-0 text-muted-foreground" :aria-expanded="showEmpty">
+              <component :is="showEmpty ? ChevronDown : ChevronRight" />
+              {{ themed.empty.length }} {{ themed.empty.length === 1 ? 'theme' : 'themes' }} with no work in this range
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="space-y-3">
+            <ThemeCard v-for="t in themed.empty" :key="t.id" :theme="t" :color="color" :repo-name="repoName" :can-up="false" :can-down="false" />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <section v-if="themed.unassigned.length" aria-label="Unassigned">
+          <h3 class="mb-1 text-sm font-semibold">Unassigned <span class="font-normal text-muted-foreground">({{ themed.unassigned.length }})</span></h3>
+          <ul class="divide-y rounded-md border">
+            <li v-for="g in themed.unassigned" :key="(g.key ?? '__none') + g.repoIds.join()">
+              <TicketRow :group="g" :color="color" :repo-name="repoName">
+                <template #actions>
+                  <AddToTheme
+                    :themes="store.notes.themes"
+                    @pick="(id) => addTo(id, g.key ? { tickets: [g.key] } : { commits: g.items.map((i) => commitKey(i.commit)) })"
+                  />
+                </template>
+              </TicketRow>
             </li>
           </ul>
+        </section>
+
+        <Button variant="outline" size="sm" @click="store.createTheme()"><Plus /> New theme</Button>
+      </div>
+
+      <!-- Ticket view -->
+      <ul v-else-if="groupBy === 'ticket'" class="divide-y rounded-md border">
+        <li v-for="g in summary.byTicket" :key="g.key ?? '__none'">
+          <TicketRow :group="g" :color="color" :repo-name="repoName" />
         </li>
       </ul>
 
@@ -154,6 +185,7 @@ async function copy() {
           </h3>
           <ul class="space-y-0.5 pl-1 text-sm">
             <li v-for="it in g.items" :key="it.commit.repoId + it.commit.hash" class="flex gap-2">
+              <Star v-if="starred(it)" class="size-3.5 shrink-0 fill-current text-amber-500" aria-label="Highlighted" />
               <span class="min-w-0 flex-1 truncate" :title="it.commit.subject">{{ it.title }}</span>
               <Badge v-for="t in it.commit.tickets" :key="t" variant="secondary" class="shrink-0">{{ t }}</Badge>
               <span class="shrink-0 text-xs text-muted-foreground">{{ repoName(it.commit.repoId) }}</span>
@@ -170,7 +202,10 @@ async function copy() {
             <span class="min-w-0 flex-1 truncate">{{ repoName(r.repoId) }}</span>
             <span class="font-mono text-xs font-normal"><span class="text-emerald-600 dark:text-emerald-400">+{{ nf(r.insertions) }}</span> <span class="text-destructive">−{{ nf(r.deletions) }}</span></span>
           </h3>
-          <p class="mt-1 text-xs text-muted-foreground">{{ r.commits }} commits</p>
+          <p class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            {{ r.commits }} commits
+            <span v-if="repoStars(r.repoId)" class="inline-flex items-center gap-0.5 text-amber-500" :aria-label="`${repoStars(r.repoId)} highlighted`"><Star class="size-3 fill-current" />{{ repoStars(r.repoId) }}</span>
+          </p>
           <div class="mt-2 flex flex-wrap gap-1">
             <TypeBadge v-for="g in r.byType" :key="g.type" :type="g.type">{{ g.type }} {{ g.items.length }}</TypeBadge>
           </div>

@@ -1,4 +1,4 @@
-import type { AppConfig, DirListing, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@shiplog/shared'
+import type { AppConfig, Notes, DirListing, ConfigError, AuthorInfo, Commit, HeatmapRow, Repo, ScanResult } from '@shiplog/shared'
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public details: string[] = []) {
@@ -63,3 +63,5 @@ export const scan = () => request<ScanResult>('/scan', { method: 'POST' })
 export const getCommits = (q?: Partial<RangeQuery>) => request<Commit[]>(`/commits${q ? rangeQs(q as RangeQuery) : ''}`)
 export const getHeatmap = (q: RangeQuery) => request<HeatmapRow[]>(`/heatmap${rangeQs(q)}`)
 export const listDir = (path?: string) => request<DirListing>(`/fs/list${qs({ path })}`)
+export const getNotes = () => request<Notes>('/notes')
+export const putNotes = (notes: Notes) => request<Notes>('/notes', { method: 'PUT', body: JSON.stringify(notes) })

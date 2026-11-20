@@ -2,8 +2,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
-import type { AppConfig, AuthorInfo, Repo, ScanResult } from '@shiplog/shared'
+import type { AppConfig, AuthorInfo, Notes, Repo, ScanResult } from '@shiplog/shared'
 import { loadConfig, saveConfig, validateConfig } from './config.js'
+import { loadNotes, saveNotes, validateNotes } from './notes.js'
 import { discoverRepos } from './discovery.js'
 import { FsListError, listDir } from './fs-list.js'
 import { readAuthors } from './gitlog.js'
@@ -70,6 +71,18 @@ export function createApp({ store, webDist, allowMissingHost }: AppOptions) {
     const saved = await saveConfig(body as AppConfig)
     repos = null
     return c.json(saved)
+  })
+  app.get('/api/notes', async (c) => c.json(await loadNotes()))
+  app.put('/api/notes', async (c) => {
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'invalid notes', details: ['body is not valid JSON'] }, 400)
+    }
+    const details = validateNotes(body)
+    if (details.length) return c.json({ error: 'invalid notes', details }, 400)
+    return c.json(await saveNotes(body as Notes))
   })
   app.get('/api/fs/list', async (c) => {
     try {

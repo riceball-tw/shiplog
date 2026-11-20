@@ -1,4 +1,4 @@
-import type { Commit, CommitType } from '@shiplog/shared'
+import type { Commit, CommitType, Theme } from '@shiplog/shared'
 import { ymd } from './dates'
 
 export const TYPE_ORDER: CommitType[] = ['feat', 'fix', 'perf', 'refactor', 'test', 'docs', 'revert', 'build', 'ci', 'chore', 'style', 'other']
@@ -70,6 +70,29 @@ export interface Summary {
   byRepo: RepoSummary[]
   byType: TypeGroup[]
   byTicket: TicketGroup[]
+  /** all items kept after the noise filter, newest first as given */
+  items: Item[]
+}
+
+/** One theme with the work it owns in the current range. */
+export interface ThemeCardData {
+  theme: Theme
+  items: Item[]
+  /** starred items, oldest first */
+  highlights: Item[]
+  tickets: TicketGroup[]
+  first: number
+  last: number
+  repoIds: string[]
+}
+
+export interface ThemeGrouping {
+  /** themes with work in range, in theme order */
+  cards: ThemeCardData[]
+  /** themes with no work in range, in theme order */
+  empty: Theme[]
+  /** ticket groups (and no-ticket commits split by repo) not in any theme */
+  unassigned: TicketGroup[]
 }
 
 // ---------- subject cleaning ----------
@@ -133,7 +156,7 @@ function deriveTitle(items: Item[]): string {
   return best
 }
 
-function makeGroup(key: string | null, items: Item[]): TicketGroup {
+export function makeGroup(key: string | null, items: Item[]): TicketGroup {
   const ts = items.map((i) => i.ts)
   return {
     key,
@@ -146,7 +169,7 @@ function makeGroup(key: string | null, items: Item[]): TicketGroup {
   }
 }
 
-function groupByTicket(items: Item[]): TicketGroup[] {
+export function groupByTicket(items: Item[]): TicketGroup[] {
   const m = new Map<string, Item[]>()
   const none: Item[] = []
   for (const it of items) {
@@ -223,6 +246,7 @@ export function summarize(commits: Commit[], opts: { hideNoise: boolean }): Summ
     byRepo,
     byType: groupByType(kept),
     byTicket: groupByTicket(kept),
+    items: kept,
   }
 }
 
@@ -231,10 +255,45 @@ export function summarize(commits: Commit[], opts: { hideNoise: boolean }): Summ
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const MAX_BULLETS = 15
 
+/** Bullet lines for ticket groups; the no-ticket bucket is split by CC scope. */
+function ticketLines(groups: TicketGroup[]): string[] {
+  const out: string[] = []
+  for (const g of groups) {
+    if (g.key !== null) out.push(`- **${g.key}** ${g.title} — ${plural(g.items.length, 'commit')}, ${g.types.join('/')}`)
+    else
+      for (const s of g.scopes ?? [{ scope: null, items: g.items }]) {
+        const types = sortTypes(s.items.map((i) => i.commit.classification.type)).join('/')
+        out.push(`- **No ticket${s.scope ? ` · ${s.scope}` : ''}** ${deriveTitle(s.items)} — ${plural(s.items.length, 'commit')}, ${types}`)
+      }
+  }
+  return out
+}
+
+const MAX_OTHER = 10
+
+function themesMarkdown(rangeLabel: string, themes: ThemeGrouping): string {
+  const out: string[] = [`## ${rangeLabel}`]
+  for (const card of themes.cards) {
+    out.push('', `### ${card.theme.name.trim() || 'Untitled theme'}`, '', card.theme.outcome.trim() || '_(no outcome written yet)_', '')
+    for (const it of card.highlights) {
+      const t = it.commit.tickets.length ? ` (${it.commit.tickets.join(', ')})` : ''
+      out.push(`- ★ ${it.title}${t}`)
+    }
+    out.push(...ticketLines(card.tickets))
+  }
+  const other = themes.unassigned.flatMap((g) => ticketLines([g]))
+  if (other.length) {
+    out.push('', '### Other work', '', ...other.slice(0, MAX_OTHER))
+    if (other.length > MAX_OTHER) out.push(`- …and ${other.length - MAX_OTHER} more`)
+  }
+  return out.join('\n') + '\n'
+}
+
 export function toMarkdown(
   summary: Summary,
-  opts: { rangeLabel: string; groupBy: 'ticket' | 'type'; repoNames: Record<string, string> },
+  opts: { rangeLabel: string; groupBy: 'theme' | 'ticket' | 'type'; repoNames: Record<string, string>; themes?: ThemeGrouping },
 ): string {
+  if (opts.groupBy === 'theme' && opts.themes) return themesMarkdown(opts.rangeLabel, opts.themes)
   const { totals } = summary
   const out: string[] = [`## ${opts.rangeLabel} · ${plural(totals.commits, 'commit')} · ${plural(totals.repos, 'repo')}`]
   if (totals.noiseHidden) out.push('', `_${plural(totals.noiseHidden, 'noise commit')} (chore/ci/style/build) not listed_`)
@@ -242,18 +301,7 @@ export function toMarkdown(
   for (const repo of summary.byRepo) {
     out.push('', `### ${opts.repoNames[repo.repoId] ?? repo.repoId}`, '')
     if (opts.groupBy === 'ticket') {
-      for (const g of repo.byTicket) {
-        const meta = `${plural(g.items.length, 'commit')}, ${g.types.join('/')}`
-        if (g.key !== null) {
-          out.push(`- **${g.key}** ${g.title} — ${meta}`)
-        } else {
-          for (const s of g.scopes ?? []) {
-            const types = sortTypes(s.items.map((i) => i.commit.classification.type)).join('/')
-            const title = deriveTitle(s.items)
-            out.push(`- **No ticket${s.scope ? ` · ${s.scope}` : ''}** ${title} — ${plural(s.items.length, 'commit')}, ${types}`)
-          }
-        }
-      }
+      out.push(...ticketLines(repo.byTicket))
     } else {
       repo.byType.forEach((g, i) => {
         if (i) out.push('')

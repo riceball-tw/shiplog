@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { commitKey, useAppStore, type TimedCommit } from '../stores/app'
 import TypeBadge from './TypeBadge.vue'
+import StarButton from './StarButton.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,7 @@ watch(
             :class="store.selectedKey === commitKey(c) ? 'bg-accent ring-2 ring-inset ring-ring' : 'hover:bg-muted/50'"
             @click="store.select(c)"
           >
+            <StarButton :pressed="store.isHighlighted(commitKey(c))" @toggle="store.toggleHighlight(commitKey(c))" />
             <span class="w-14 shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular-nums">{{ time(c.ts) }}</span>
             <span class="w-28 shrink-0 truncate text-foreground/80" :title="repoName.get(c.repoId)">{{ repoName.get(c.repoId) ?? c.repoId }}</span>
             <TypeBadge :classification="c.classification" />

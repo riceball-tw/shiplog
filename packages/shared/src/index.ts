@@ -96,6 +96,8 @@ export interface ScanResult {
 // GET  /api/health                         -> { ok: true }
 // GET  /api/config                         -> AppConfig
 // PUT  /api/config        body AppConfig   -> AppConfig
+// GET  /api/notes                          -> Notes  (themes + highlights; notes.json next to config.json; empty when missing)
+// PUT  /api/notes         body Notes       -> Notes  (400 NotesError on invalid shape: <=50 themes, unique ids, sane lengths)
 // GET  /api/repos                          -> Repo[]
 // GET  /api/authors?repoId=                -> AuthorInfo[]  (all authors seen, to help pick identities)
 // POST /api/scan                           -> ScanResult
@@ -112,7 +114,7 @@ export interface AuthorInfo {
   names?: string[]
 }
 
-/** Body of a 400 response from PUT /api/config */
+/** Body of a 400 response from PUT /api/config and PUT /api/notes */
 export interface ConfigError {
   error: string
   details: string[]
@@ -141,4 +143,25 @@ export interface DirListing {
   home: string
   /** subdirectories only, hidden ones omitted, case-insensitively sorted, capped at 2000 */
   entries: DirEntry[]
+}
+
+/** Stable per-commit key used for notes (highlights, theme commits) and UI selection. */
+export const commitKey = (c: { repoId: string; hash: string }) => `${c.repoId}:${c.hash}`
+
+/** A review theme: a named story with a written outcome, backed by tickets/commits/repos. */
+export interface Theme {
+  id: string
+  name: string
+  /** one line: what changed because of this work */
+  outcome: string
+  tickets: string[]
+  /** commit keys (repoId:hash) */
+  commits: string[]
+  repoIds: string[]
+}
+
+export interface Notes {
+  themes: Theme[]
+  /** starred commit keys */
+  highlights: string[]
 }
