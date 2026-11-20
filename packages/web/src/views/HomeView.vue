@@ -91,9 +91,6 @@ watch(
           <ScanButton />
         </div>
       </div>
-      <p class="px-4 pt-2 text-xs text-muted-foreground">
-        Drag the handles or the highlighted window to choose a range · ⌘/Ctrl + scroll over the lanes to zoom
-      </p>
       <OverviewChart />
       <div class="border-t">
         <SwimlaneChart />
