@@ -23,7 +23,7 @@ const nf = (n: number) => n.toLocaleString()
 
 <template>
   <div class="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1">
-    <h2 class="text-base font-semibold tracking-tight" data-testid="range-label">{{ rangeLabel(store.range) }}</h2>
+     <h2 class="text-base font-semibold tracking-tight" data-testid="range-label">{{ rangeLabel(store.range) }}</h2>
     <dl class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/80">
       <div><dt class="inline text-muted-foreground">Commits </dt><dd class="inline font-semibold tabular-nums">{{ nf(stats.commits) }}</dd></div>
       <div><dt class="inline text-muted-foreground">Repos </dt><dd class="inline font-semibold tabular-nums">{{ stats.repos }}</dd></div>

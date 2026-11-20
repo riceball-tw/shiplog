@@ -183,7 +183,6 @@ const sourceRows = computed<SourceRow[]>(() => {
           <span v-if="settingsDirty" class="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-amber-500" aria-label="Unsaved settings" />
         </Button>
       </div>
-      <p class="mt-0.5 mb-1.5 text-[11px] leading-snug text-muted-foreground">Saved to config.json. Changing it rescans your repos.</p>
       <div class="-mx-1.5 space-y-px">
         <button
           v-for="row in sourceRows" :key="row.section"
