@@ -174,24 +174,7 @@ async function copy() {
           <div class="mt-2 flex flex-wrap gap-1">
             <TypeBadge v-for="g in r.byType" :key="g.type" :type="g.type">{{ g.type }} {{ g.items.length }}</TypeBadge>
           </div>
-          <ul v-if="r.topDirs.length" class="mt-2 space-y-0.5 text-xs text-foreground/80">
-            <li v-for="d in r.topDirs.slice(0, 5)" :key="d.dir" class="flex justify-between gap-2">
-              <span class="truncate font-mono">{{ d.dir }}</span><span class="shrink-0 text-muted-foreground">{{ nf(d.lines) }} lines</span>
-            </li>
-          </ul>
         </div>
-      </div>
-
-      <!-- Top areas -->
-      <div v-if="summary.topDirs.length">
-        <h3 class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top areas</h3>
-        <ul class="grid gap-x-6 gap-y-0.5 text-sm @xl:grid-cols-2">
-          <li v-for="d in summary.topDirs" :key="d.repoId + d.dir" class="flex items-center gap-2">
-            <span class="size-2 shrink-0 rounded-sm" :style="{ background: color(d.repoId) }" />
-            <span class="min-w-0 flex-1 truncate font-mono text-xs" :title="repoName(d.repoId) + ' / ' + d.dir">{{ repoName(d.repoId) }}/{{ d.dir }}</span>
-            <span class="shrink-0 text-xs text-muted-foreground">{{ nf(d.lines) }} lines · {{ d.commits }}c</span>
-          </li>
-        </ul>
       </div>
 
       <!-- Markdown preview -->

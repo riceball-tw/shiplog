@@ -49,13 +49,6 @@ export interface TicketGroup {
   scopes?: ScopeGroup[]
 }
 
-export interface DirStat {
-  repoId: string
-  dir: string
-  lines: number
-  commits: number
-}
-
 export interface RepoSummary {
   repoId: string
   commits: number
@@ -63,7 +56,6 @@ export interface RepoSummary {
   deletions: number
   byType: TypeGroup[]
   byTicket: TicketGroup[]
-  topDirs: DirStat[]
 }
 
 export interface Summary {
@@ -78,7 +70,6 @@ export interface Summary {
   byRepo: RepoSummary[]
   byType: TypeGroup[]
   byTicket: TicketGroup[]
-  topDirs: DirStat[]
 }
 
 // ---------- subject cleaning ----------
@@ -184,33 +175,6 @@ function groupByTicket(items: Item[]): TicketGroup[] {
   return out
 }
 
-/** first two directory segments of a file path; files at the root -> (root) */
-export function dirOf(path: string): string {
-  const parts = path.split('/').filter(Boolean)
-  parts.pop()
-  return parts.length ? parts.slice(0, 2).join('/') : '(root)'
-}
-
-function computeDirs(items: Item[], limit = 10): DirStat[] {
-  const m = new Map<string, DirStat>()
-  for (const { commit } of items) {
-    const touched = new Set<string>()
-    for (const f of commit.files) {
-      if (f.excluded) continue
-      const dir = dirOf(f.path)
-      const k = `${commit.repoId}\u0000${dir}`
-      let e = m.get(k)
-      if (!e) m.set(k, (e = { repoId: commit.repoId, dir, lines: 0, commits: 0 }))
-      e.lines += f.insertions + f.deletions
-      if (!touched.has(k)) {
-        touched.add(k)
-        e.commits++
-      }
-    }
-  }
-  return [...m.values()].sort((a, b) => b.lines - a.lines || a.dir.localeCompare(b.dir)).slice(0, limit)
-}
-
 // ---------- summarize ----------
 
 export function summarize(commits: Commit[], opts: { hideNoise: boolean }): Summary {
@@ -244,7 +208,6 @@ export function summarize(commits: Commit[], opts: { hideNoise: boolean }): Summ
       deletions: items.reduce((n, i) => n + i.commit.deletions, 0),
       byType: groupByType(items),
       byTicket: groupByTicket(items),
-      topDirs: computeDirs(items),
     }))
     .sort((a, b) => b.commits - a.commits || a.repoId.localeCompare(b.repoId))
 
@@ -260,7 +223,6 @@ export function summarize(commits: Commit[], opts: { hideNoise: boolean }): Summ
     byRepo,
     byType: groupByType(kept),
     byTicket: groupByTicket(kept),
-    topDirs: computeDirs(kept),
   }
 }
 
