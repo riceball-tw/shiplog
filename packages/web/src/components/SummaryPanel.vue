@@ -110,13 +110,9 @@ async function copy() {
     <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
     <p v-else-if="!summary.totals.commits" class="p-4 text-sm text-muted-foreground">No commits in this range. Try a wider range or Rescan.</p>
     <div v-else class="space-y-5 p-4">
-      <p class="text-sm text-foreground/80">
-        <span class="font-semibold">{{ nf(summary.totals.commits) }}</span> commits across
-        <span class="font-semibold">{{ summary.totals.repos }}</span> {{ summary.totals.repos === 1 ? 'repo' : 'repos' }} on
-        <span class="font-semibold">{{ summary.totals.activeDays }}</span> active days ·
-        <span class="font-mono"><span class="text-emerald-600 dark:text-emerald-400">+{{ nf(summary.totals.insertions) }}</span>
-          <span class="ml-1 text-destructive">−{{ nf(summary.totals.deletions) }}</span></span>
-        <span v-if="summary.totals.noiseHidden" class="ml-1 text-muted-foreground">· {{ summary.totals.noiseHidden }} noise commits hidden</span>
+      <!-- range totals live in the timeline header; only the filter's effect is reported here -->
+      <p v-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
+        {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
       </p>
 
       <!-- Ticket view -->
