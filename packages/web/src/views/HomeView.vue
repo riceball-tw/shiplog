@@ -8,6 +8,7 @@ import RangePresets from '../components/RangePresets.vue'
 import OverviewChart from '../components/OverviewChart.vue'
 import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
+import ScanButton from '../components/ScanButton.vue'
 import CommitList from '../components/CommitList.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
 import SetupGuide from '../components/SetupGuide.vue'
@@ -85,7 +86,10 @@ watch(
     <Card class="gap-0 overflow-hidden py-0" data-testid="timeline">
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2.5">
         <RangeStats />
-        <RangePresets class="ml-auto" />
+        <div class="ml-auto flex items-center gap-2">
+          <RangePresets />
+          <ScanButton />
+        </div>
       </div>
       <p class="px-4 pt-2 text-xs text-muted-foreground">
         Drag the handles or the highlighted window to choose a range · ⌘/Ctrl + scroll over the lanes to zoom

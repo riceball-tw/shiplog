@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useAppStore } from '../stores/app'
 import { prefersDark } from '../lib/theme'
 import { loadPref, savePref } from '../lib/prefs'
-import { type SettingsSection, useSettingsSheet } from '../lib/ui'
+import { type SettingsSection, settingsDirty, useSettingsSheet } from '../lib/ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -175,7 +175,13 @@ const sourceRows = computed<SourceRow[]>(() => {
       <div class="flex items-center gap-2">
         <SlidersHorizontal class="size-3.5 text-muted-foreground" aria-hidden="true" />
         <h2 id="sb-source" class="text-xs font-medium tracking-wide text-muted-foreground uppercase">Data source</h2>
-        <Button variant="ghost" size="xs" class="ml-auto -mr-1" @click="openSettings()">Edit</Button>
+        <Button
+          variant="ghost" size="xs" class="relative ml-auto -mr-1" data-testid="settings-toggle"
+          :title="settingsDirty ? 'Unsaved settings' : 'Edit settings (⌘/Ctrl ,)'" @click="openSettings()"
+        >
+          Edit
+          <span v-if="settingsDirty" class="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-amber-500" aria-label="Unsaved settings" />
+        </Button>
       </div>
       <p class="mt-0.5 mb-1.5 text-[11px] leading-snug text-muted-foreground">Saved to config.json. Changing it rescans your repos.</p>
       <div class="-mx-1.5 space-y-px">
