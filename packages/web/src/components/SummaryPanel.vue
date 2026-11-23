@@ -12,6 +12,7 @@ import TypeBadge from './TypeBadge.vue'
 import TicketRow from './TicketRow.vue'
 import ThemeCard from './ThemeCard.vue'
 import AddToTheme from './AddToTheme.vue'
+import ThemeNameDialog from './ThemeNameDialog.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -48,13 +49,25 @@ const starred = (it: { commit: { repoId: string; hash: string } }) => store.isHi
 const repoStars = (repoId: string) => store.notes.highlights.filter((k) => k.startsWith(repoId + ':')).length
 /** theme card order neighbours, so up/down move relative to what is on screen */
 const cardIds = computed(() => themed.value.cards.map((c) => c.theme.id))
+/** item waiting on the New theme dialog; assigned to the theme once it is created */
+const nameDialog = ref(false)
+let pending: { tickets?: string[]; commits?: string[] } | null = null
 function addTo(themeId: string | null, what: { tickets?: string[]; commits?: string[] }) {
   if (themeId === null) {
-    const name = window.prompt('Theme name')?.trim()
-    if (!name) return
-    themeId = store.createTheme(name)
+    pending = what
+    nameDialog.value = true
+    return
   }
   store.assign(themeId, what)
+}
+function newTheme(name: string) {
+  const id = store.createTheme(name)
+  if (pending) store.assign(id, pending)
+  pending = null
+}
+function openNewTheme() {
+  pending = null
+  nameDialog.value = true
 }
 const showEmpty = ref(false)
 
@@ -109,21 +122,28 @@ async function copy() {
       </Button>
     </div>
 
+    <Alert v-if="store.notesError" variant="destructive" class="mx-4 mt-4 w-auto" role="alert">
+      <AlertDescription class="flex items-center justify-between gap-3">
+        <span class="min-w-0">{{ store.notesError }}</span>
+        <Button size="sm" variant="outline" class="shrink-0" @click="store.flushNotes()">Retry</Button>
+      </AlertDescription>
+    </Alert>
     <Alert v-if="store.error" variant="destructive" class="m-4 w-auto">
       <AlertDescription>{{ store.error }}</AlertDescription>
     </Alert>
     <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
-    <p v-else-if="!summary.totals.commits" class="p-4 text-sm text-muted-foreground">No commits in this range. Try a wider range or Rescan.</p>
+    <p v-else-if="!summary.totals.commits && groupBy !== 'theme'" class="p-4 text-sm text-muted-foreground">No commits in this range. Try a wider range or Rescan.</p>
     <div v-else class="space-y-5 p-4">
       <!-- range totals live in the timeline header; only the filter's effect is reported here -->
-      <p v-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
+      <p v-if="!summary.totals.commits" class="text-sm text-muted-foreground">No commits in this range.</p>
+      <p v-else-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
         {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
       </p>
 
       <!-- Theme view -->
       <div v-if="groupBy === 'theme'" class="space-y-4">
         <p v-if="!store.notes.themes.length" class="text-sm text-muted-foreground">
-          Themes are the handful of stories you tell in a review. Create one, write its outcome, then add tickets to it below.
+          Group tickets into themes — the stories you'll tell in your review.
         </p>
         <ThemeCard
           v-for="(c, i) in themed.cards"
@@ -138,7 +158,21 @@ async function copy() {
           @down="store.reorderTheme(c.theme.id, cardIds[i + 1]!)"
         />
 
-        <Collapsible v-if="themed.empty.length" v-model:open="showEmpty" class="space-y-3">
+        <!-- nothing in range: all themes are "empty", list them directly so they stay editable -->
+        <div v-if="!summary.totals.commits" class="space-y-3">
+          <ThemeCard
+            v-for="(t, i) in themed.empty"
+            :key="t.id"
+            :theme="t"
+            :color="color"
+            :repo-name="repoName"
+            :can-up="i > 0"
+            :can-down="i < themed.empty.length - 1"
+            @up="store.reorderTheme(t.id, themed.empty[i - 1]!.id)"
+            @down="store.reorderTheme(t.id, themed.empty[i + 1]!.id)"
+          />
+        </div>
+        <Collapsible v-else-if="themed.empty.length" v-model:open="showEmpty" class="space-y-3">
           <CollapsibleTrigger as-child>
             <Button variant="link" class="h-auto px-0 text-muted-foreground" :aria-expanded="showEmpty">
               <component :is="showEmpty ? ChevronDown : ChevronRight" />
@@ -166,7 +200,7 @@ async function copy() {
           </ul>
         </section>
 
-        <Button variant="outline" size="sm" @click="store.createTheme()"><Plus /> New theme</Button>
+        <Button variant="outline" size="sm" @click="openNewTheme"><Plus /> New theme</Button>
       </div>
 
       <!-- Ticket view -->
@@ -213,7 +247,7 @@ async function copy() {
       </div>
 
       <!-- Markdown preview -->
-      <Collapsible v-model:open="showPreview">
+      <Collapsible v-if="summary.totals.commits" v-model:open="showPreview">
         <CollapsibleTrigger as-child>
           <Button variant="link" class="h-auto px-0" :aria-expanded="showPreview">
             <component :is="showPreview ? ChevronDown : ChevronRight" /> Preview markdown
@@ -224,5 +258,6 @@ async function copy() {
         </CollapsibleContent>
       </Collapsible>
     </div>
+    <ThemeNameDialog v-model:open="nameDialog" @submit="newTheme" />
   </Card>
 </template>

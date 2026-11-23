@@ -53,6 +53,8 @@ export const useAppStore = defineStore('app', () => {
   const loading = ref(false)
   const scanning = ref(false)
   const error = ref<string | null>(null)
+  /** failed notes save; separate from `error` so the summary stays visible. Cleared by the next successful save */
+  const notesError = ref<string | null>(null)
   const lastScan = ref<ScanResult | null>(null)
   const range = ref<Range>(presetRange('twoWeeks')!)
   const hiddenRepoIds = ref<string[]>(loadHidden())
@@ -164,8 +166,9 @@ export const useAppStore = defineStore('app', () => {
     if (!notesLoaded) return
     try {
       await api.putNotes(notes.value)
+      notesError.value = null
     } catch (e) {
-      error.value = `Could not save notes: ${msg(e)}`
+      notesError.value = `Could not save notes: ${msg(e)}`
     }
   }
   /** apply a change to the notes and schedule a save */
@@ -275,7 +278,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    repos, config, allCommits, loading, scanning, error, lastScan, range, hiddenRepoIds, selectedKey, notes,
+    repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, selectedKey, notes,
     timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
     loadRepos, loadConfig, loadCommits, loadNotes, init,
     flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, isHighlighted, toggleHighlight,

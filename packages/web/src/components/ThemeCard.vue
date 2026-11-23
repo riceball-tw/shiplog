@@ -6,6 +6,7 @@ import { fmtShort } from '../lib/dates'
 import type { ThemeCardData } from '../lib/summary'
 import TicketRow from './TicketRow.vue'
 import StarButton from './StarButton.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -26,13 +27,10 @@ defineEmits<{ up: []; down: [] }>()
 
 const store = useAppStore()
 const showWork = ref(false)
+const confirmDelete = ref(false)
 const span = (a: number, b: number) => (fmtShort(a) === fmtShort(b) ? fmtShort(a) : `${fmtShort(a)} – ${fmtShort(b)}`)
 const ticketCount = computed(() => props.data?.tickets.filter((g) => g.key !== null).length ?? 0)
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
-
-function remove() {
-  if (confirm(`Delete theme "${props.theme.name || 'Untitled theme'}"? Its commits stay; only the grouping is removed.`)) store.deleteTheme(props.theme.id)
-}
 </script>
 
 <template>
@@ -48,7 +46,7 @@ function remove() {
         />
         <Button variant="ghost" size="icon-sm" :disabled="!canUp" aria-label="Move theme up" @click="$emit('up')"><ChevronUp /></Button>
         <Button variant="ghost" size="icon-sm" :disabled="!canDown" aria-label="Move theme down" @click="$emit('down')"><ChevronDown /></Button>
-        <Button variant="ghost" size="icon-sm" aria-label="Delete theme" @click="remove"><Trash2 /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Delete theme" @click="confirmDelete = true"><Trash2 /></Button>
       </div>
       <Textarea
         :model-value="theme.outcome"
@@ -94,5 +92,12 @@ function remove() {
         </li>
       </ul>
     </template>
+    <ConfirmDialog
+      v-model:open="confirmDelete"
+      :title="`Delete theme &quot;${theme.name || 'Untitled theme'}&quot;?`"
+      description="This only removes the grouping. Your commits are never touched."
+      confirm-label="Delete theme"
+      @confirm="store.deleteTheme(theme.id)"
+    />
   </Card>
 </template>
