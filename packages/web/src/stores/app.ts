@@ -67,6 +67,8 @@ export const useAppStore = defineStore('app', () => {
     }
   })
   const selectedKey = ref<string | null>(null)
+  /** set by the themes timeline; the matching ThemeCard scrolls into view, expands, then clears it */
+  const themeFocus = ref<{ id: string } | null>(null)
   const notes = ref<Notes>({ themes: [], highlights: [] })
   /** don't PUT before the first GET succeeded: that would overwrite saved notes with empty ones */
   let notesLoaded = false
@@ -273,15 +275,17 @@ export const useAppStore = defineStore('app', () => {
   function setHiddenRepoIds(ids: string[]) {
     hiddenRepoIds.value = [...new Set(ids)]
   }
+  const focusTheme = (id: string) => (themeFocus.value = { id })
+  const clearThemeFocus = () => (themeFocus.value = null)
   function select(c: { repoId: string; hash: string } | null) {
     selectedKey.value = c ? commitKey(c) : null
   }
 
   return {
-    repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, selectedKey, notes,
+    repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, selectedKey, notes, themeFocus,
     timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
     loadRepos, loadConfig, loadCommits, loadNotes, init,
     flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, isHighlighted, toggleHighlight,
-    scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select,
+    scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select, focusTheme, clearThemeFocus,
   }
 })

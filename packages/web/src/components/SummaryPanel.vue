@@ -31,6 +31,8 @@ const store = useAppStore()
 const groupBy = ref<GroupBy>(loadPref('oo.summary.groupBy', GROUPS, 'theme'))
 const hideNoise = ref(loadPref('oo.summary.hideNoise', ['1', '0'] as const, '1') === '1')
 watch(groupBy, (v) => savePref('oo.summary.groupBy', v))
+// a click in the themes timeline needs the theme view so the card exists
+watch(() => store.themeFocus, (f) => f && (groupBy.value = 'theme'), { immediate: true })
 watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
 
 const summary = computed(() => summarize(store.commitsInRange, { hideNoise: hideNoise.value }))

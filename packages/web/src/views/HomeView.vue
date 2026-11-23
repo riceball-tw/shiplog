@@ -6,6 +6,7 @@ import { useAppStore } from '../stores/app'
 import { dayEnd, parseYmd, ymd } from '../lib/dates'
 import RangePresets from '../components/RangePresets.vue'
 import OverviewChart from '../components/OverviewChart.vue'
+import ThemeGantt from '../components/ThemeGantt.vue'
 import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
 import ScanButton from '../components/ScanButton.vue'
@@ -14,6 +15,8 @@ import SummaryPanel from '../components/SummaryPanel.vue'
 import SetupGuide from '../components/SetupGuide.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ChevronDown, ChevronRight } from '@lucide/vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { loadPref, savePref } from '../lib/prefs'
 
@@ -42,6 +45,8 @@ function writeUrl() {
 const TABS = ['summary', 'commits'] as const
 const tab = ref<string>(loadPref('oo.tab', TABS, 'summary'))
 watch(tab, (v) => savePref('oo.tab', v))
+const lanesOpen = ref(loadPref('oo.lanesOpen', ['1', '0'] as const, '0') === '1')
+watch(lanesOpen, (v) => savePref('oo.lanesOpen', v ? '1' : '0'))
 
 readUrl()
 onMounted(() => {
@@ -75,6 +80,13 @@ watch(
     if (k && !wide.value) tab.value = 'commits'
   },
 )
+// clicking a theme row in the timeline jumps to its card
+watch(
+  () => store.themeFocus,
+  (f) => {
+    if (f && !wide.value) tab.value = 'summary'
+  },
+)
 </script>
 
 <template>
@@ -93,8 +105,17 @@ watch(
       </div>
       <OverviewChart />
       <div class="border-t">
-        <SwimlaneChart />
+        <ThemeGantt />
       </div>
+      <Collapsible v-model:open="lanesOpen" class="border-t">
+        <CollapsibleTrigger as-child>
+          <button class="flex w-full items-center gap-1 px-4 py-2 text-left text-xs text-muted-foreground hover:bg-muted/50" :aria-expanded="lanesOpen">
+            <component :is="lanesOpen ? ChevronDown : ChevronRight" class="size-4" />
+            Repo lanes
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent><SwimlaneChart /></CollapsibleContent>
+      </Collapsible>
     </Card>
 
     <div ref="results" data-testid="results">

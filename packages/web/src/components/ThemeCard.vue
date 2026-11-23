@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { commitKey, type Theme } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
 import { fmtShort } from '../lib/dates'
@@ -27,6 +27,18 @@ defineEmits<{ up: []; down: [] }>()
 
 const store = useAppStore()
 const showWork = ref(false)
+const root = useTemplateRef<{ $el: HTMLElement }>('root')
+// the themes timeline asks for this card: expand the work list and scroll to it (immediate: the card may mount after the request)
+watch(
+  () => store.themeFocus,
+  (f) => {
+    if (f?.id !== props.theme.id) return
+    showWork.value = true
+    store.clearThemeFocus()
+    nextTick(() => root.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  },
+  { immediate: true },
+)
 const confirmDelete = ref(false)
 const span = (a: number, b: number) => (fmtShort(a) === fmtShort(b) ? fmtShort(a) : `${fmtShort(a)} – ${fmtShort(b)}`)
 const ticketCount = computed(() => props.data?.tickets.filter((g) => g.key !== null).length ?? 0)
@@ -34,7 +46,7 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 </script>
 
 <template>
-  <Card class="gap-0 py-0" data-testid="theme-card">
+  <Card ref="root" class="gap-0 py-0" data-testid="theme-card">
     <div class="space-y-2 p-3">
       <div class="flex items-center gap-1">
         <Input

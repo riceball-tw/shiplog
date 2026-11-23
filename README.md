@@ -1,6 +1,6 @@
 # shiplog
 
-A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus one swimlane per repo. A summary panel groups the commits in the selected range by theme, ticket, type or repo and exports a Markdown pitch you can paste into your notes.
+A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus a themes timeline (one row per theme, density and starred highlights; click a row to jump to its card). Per-repo swimlanes live in a collapsible "Repo lanes" section. A summary panel groups the commits in the selected range by theme, ticket, type or repo and exports a Markdown pitch you can paste into your notes.
 
 ## Requirements
 
