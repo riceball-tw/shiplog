@@ -22,9 +22,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { ChevronDown, ChevronRight, Plus, Star } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Eye, Plus, Star } from '@lucide/vue'
 
 const GROUPS = ['theme', 'ticket', 'type', 'repo'] as const
 type GroupBy = (typeof GROUPS)[number]
@@ -171,7 +172,10 @@ async function copy() {
         <Checkbox id="with-timeline" v-model="withTimeline" />
         <Label for="with-timeline" class="cursor-pointer font-normal">Include timeline</Label>
       </div>
-      <Button :class="groupBy === 'theme' ? '' : 'ml-auto'" size="sm" :disabled="!summary.totals.commits" @click="copy">
+      <Button :class="groupBy === 'theme' ? '' : 'ml-auto'" size="sm" variant="outline" :disabled="!summary.totals.commits" @click="showPreview = true">
+        <Eye /> Preview
+      </Button>
+      <Button size="sm" :disabled="!summary.totals.commits" @click="copy">
         {{ copied ? 'Copied ✓' : 'Copy as Markdown' }}
       </Button>
     </div>
@@ -300,15 +304,18 @@ async function copy() {
         </div>
       </div>
 
-      <!-- Markdown preview -->
-      <Collapsible v-if="summary.totals.commits" v-model:open="showPreview">
-        <CollapsibleTrigger as-child>
-          <Button variant="link" class="h-auto px-0" :aria-expanded="showPreview">
-            <component :is="showPreview ? ChevronDown : ChevronRight" /> Preview markdown
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div v-if="diagram" class="mt-2 space-y-2">
+    </div>
+    <ThemeNameDialog v-model:open="nameDialog" @submit="newTheme" />
+
+    <!-- export preview: a dialog so it's reachable from the toolbar however long the summary is -->
+    <Dialog v-model:open="showPreview">
+      <DialogContent class="flex max-h-[85vh] flex-col sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Export preview</DialogTitle>
+          <DialogDescription>What Copy as Markdown puts on your clipboard.</DialogDescription>
+        </DialogHeader>
+        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto">
+          <div v-if="diagram" class="space-y-2">
             <p v-if="'err' in diagram" class="text-xs text-muted-foreground">Timeline preview unavailable: {{ diagram.err }}</p>
             <template v-else>
               <!-- pele reads --pele-* from here; mapped to the app tokens so light/dark follow the page -->
@@ -320,10 +327,12 @@ async function copy() {
               </div>
             </template>
           </div>
-          <pre class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{{ markdown }}</pre>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-    <ThemeNameDialog v-model:open="nameDialog" @submit="newTheme" />
+          <pre class="whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{{ markdown }}</pre>
+        </div>
+        <DialogFooter>
+          <Button size="sm" @click="copy">{{ copied ? 'Copied ✓' : 'Copy as Markdown' }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </Card>
 </template>
