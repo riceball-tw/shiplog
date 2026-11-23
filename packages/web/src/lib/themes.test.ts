@@ -94,6 +94,14 @@ describe('groupByTheme + markdown', () => {
     expect(md).not.toContain('Unused')
   })
 
+  it('puts the mermaid block under the heading, only for theme grouping', () => {
+    const opts = { rangeLabel: 'R', repoNames: {}, themes: g, mermaid: 'gantt\n  title R\n' }
+    const md = toMarkdown(summary, { ...opts, groupBy: 'theme' })
+    expect(md.startsWith('## R\n\n```mermaid\ngantt\n  title R\n```\n\n### Payments')).toBe(true)
+    expect(toMarkdown(summary, { ...opts, groupBy: 'theme', mermaid: null })).not.toContain('mermaid')
+    expect(toMarkdown(summary, { ...opts, groupBy: 'ticket' })).not.toContain('mermaid')
+  })
+
   it('caps other work at 10 lines', () => {
     const many = Array.from({ length: 13 }, (_, i) => mk({ subject: `feat: t${i}`, tickets: [`Z-${i}`] }))
     const s = summarize(many, { hideNoise: true })

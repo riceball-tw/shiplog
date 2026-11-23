@@ -63,6 +63,7 @@ A review is told as a handful of **themes** ("Payments migration", "Checkout per
 - A commit belongs to the first theme (in theme order) that lists it explicitly, else one that lists one of its tickets, else one that lists its repo. Each commit is in at most one theme.
 - **Highlights**: star the handful of commits worth mentioning, in the Commits list or in an expanded ticket. Starred commits lead their theme in the summary and the export.
 - **Copy as Markdown** with Theme grouping exports each theme as a heading with its outcome, highlights first, then its tickets, then an "Other work" list.
+- With Theme grouping the export also starts with a Mermaid `gantt` block (the themes timeline: one section per theme, one bar per stretch of activity, a milestone per starred highlight, muted "Other work"). It renders in Obsidian, GitHub and GitLab. Untick **Include timeline** to leave it out. The "Preview markdown" section draws the diagram with [pele](https://github.com/obsidianmd/pele); **Copy image** (PNG, 2x, white background; downloads the file if the browser can't write images to the clipboard) and **Download SVG** give you the same picture for Slack, Google Docs or email, which don't render Mermaid.
 
 Themes and highlights are saved to `notes.json` next to the config (`~/.shiplog/notes.json`, or `$SHIPLOG_HOME/notes.json`). Commits are referenced by `<repoId>:<hash>`; the API is `GET`/`PUT /api/notes`.
 

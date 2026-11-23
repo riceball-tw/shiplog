@@ -3,6 +3,7 @@ import { commitKey, type Repo, type Theme } from '@shiplog/shared'
 import type { Range, TimedCommit } from '../stores/app'
 import { COMMIT_TYPE_COLORS } from './commitTypes'
 import { addDays, DAY, dayEnd, dayStart, fmtLong, fmtShort, weekStart } from './dates'
+import { cleanSubject } from './summary'
 import { themeOf } from './themes'
 
 export const OVERVIEW_HEIGHT = 140
@@ -317,7 +318,7 @@ export const GANTT_ROW_HEIGHT = 28
 export const GANTT_AXIS_HEIGHT = 28
 export const OTHER_ROW_ID = '__other__'
 /** ranges up to this long get per-day density buckets, longer ones per-week */
-const GANTT_DAILY_MAX_DAYS = 42
+export const GANTT_DAILY_MAX_DAYS = 42
 
 export interface GanttBucket {
   start: number
@@ -336,6 +337,8 @@ export interface GanttRow {
   commits: number
   /** timestamps of starred commits */
   stars: number[]
+  /** starred commits with cleaned titles, oldest first (Mermaid milestones) */
+  starred: { ts: number; title: string }[]
   buckets: GanttBucket[]
 }
 
@@ -372,6 +375,10 @@ export function themeGanttRows(commits: TimedCommit[], themes: Theme[], highligh
       tickets: new Set(cs.flatMap((c) => c.tickets)).size,
       commits: cs.length,
       stars: cs.filter((c) => starred.has(commitKey(c))).map((c) => c.ts),
+      starred: cs
+        .filter((c) => starred.has(commitKey(c)))
+        .sort((a, b) => a.ts - b.ts)
+        .map((c) => ({ ts: c.ts, title: cleanSubject(c.subject, c.tickets) })),
       buckets,
     }
   }

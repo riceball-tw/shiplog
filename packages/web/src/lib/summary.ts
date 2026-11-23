@@ -271,8 +271,9 @@ function ticketLines(groups: TicketGroup[]): string[] {
 
 const MAX_OTHER = 10
 
-function themesMarkdown(rangeLabel: string, themes: ThemeGrouping): string {
+function themesMarkdown(rangeLabel: string, themes: ThemeGrouping, mermaid?: string | null): string {
   const out: string[] = [`## ${rangeLabel}`]
+  if (mermaid) out.push('', '```mermaid', mermaid.replace(/\n+$/, ''), '```')
   for (const card of themes.cards) {
     out.push('', `### ${card.theme.name.trim() || 'Untitled theme'}`, '', card.theme.outcome.trim() || '_(no outcome written yet)_', '')
     for (const it of card.highlights) {
@@ -291,9 +292,9 @@ function themesMarkdown(rangeLabel: string, themes: ThemeGrouping): string {
 
 export function toMarkdown(
   summary: Summary,
-  opts: { rangeLabel: string; groupBy: 'theme' | 'ticket' | 'type'; repoNames: Record<string, string>; themes?: ThemeGrouping },
+  opts: { rangeLabel: string; groupBy: 'theme' | 'ticket' | 'type'; repoNames: Record<string, string>; themes?: ThemeGrouping; /** Mermaid gantt text, emitted as a fenced block under the heading (theme grouping only) */ mermaid?: string | null },
 ): string {
-  if (opts.groupBy === 'theme' && opts.themes) return themesMarkdown(opts.rangeLabel, opts.themes)
+  if (opts.groupBy === 'theme' && opts.themes) return themesMarkdown(opts.rangeLabel, opts.themes, opts.mermaid)
   const { totals } = summary
   const out: string[] = [`## ${opts.rangeLabel} · ${plural(totals.commits, 'commit')} · ${plural(totals.repos, 'repo')}`]
   if (totals.noiseHidden) out.push('', `_${plural(totals.noiseHidden, 'noise commit')} (chore/ci/style/build) not listed_`)

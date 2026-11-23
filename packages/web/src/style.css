@@ -126,3 +126,14 @@
     @apply font-sans;
     }
 }
+/* pele (Mermaid SVG) colors follow the app tokens */
+.pele-theme {
+    --pele-bg: var(--background);
+    --pele-fg: var(--foreground);
+    --pele-muted: var(--muted-foreground);
+    --pele-line: var(--foreground);
+    --pele-surface: var(--muted);
+    --pele-surface-alt: var(--accent);
+    --pele-border: var(--border);
+    --pele-accent: var(--primary);
+}

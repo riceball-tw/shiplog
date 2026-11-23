@@ -3,7 +3,10 @@ import { computed, ref, watch } from 'vue'
 import type { CommitType } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
 import { commitKey } from '@shiplog/shared'
-import { rangeLabel } from '../lib/dates'
+import { rangeLabel, ymd } from '../lib/dates'
+import { themeGanttRows } from '../lib/charts'
+import { themeGanttMermaid } from '../lib/mermaid'
+import { download, renderMermaid, standaloneSvg, svgToPng, type Rendered } from '../lib/mermaidImage'
 import { loadPref, savePref } from '../lib/prefs'
 import { summarize, toMarkdown, TYPE_LABELS } from '../lib/summary'
 import { groupByTheme } from '../lib/themes'
@@ -34,17 +37,25 @@ watch(groupBy, (v) => savePref('oo.summary.groupBy', v))
 // a click in the themes timeline needs the theme view so the card exists
 watch(() => store.themeFocus, (f) => f && (groupBy.value = 'theme'), { immediate: true })
 watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
+const withTimeline = ref(loadPref('oo.summary.mermaid', ['1', '0'] as const, '1') === '1')
+watch(withTimeline, (v) => savePref('oo.summary.mermaid', v ? '1' : '0'))
 
 const summary = computed(() => summarize(store.commitsInRange, { hideNoise: hideNoise.value }))
 const repoNames = computed(() => Object.fromEntries(store.repos.map((r) => [r.id, r.name])))
 const repoName = (id: string) => repoNames.value[id] ?? id
 const themed = computed(() => groupByTheme(summary.value.items, store.notes))
+const mermaid = computed(() =>
+  groupBy.value === 'theme'
+    ? themeGanttMermaid(themeGanttRows(store.commitsInRange, store.notes.themes, store.notes.highlights, store.range), store.range, { title: rangeLabel(store.range) })
+    : null,
+)
 const markdown = computed(() =>
   toMarkdown(summary.value, {
     rangeLabel: rangeLabel(store.range),
     groupBy: groupBy.value === 'theme' || groupBy.value === 'ticket' ? groupBy.value : 'type',
     repoNames: repoNames.value,
     themes: themed.value,
+    mermaid: withTimeline.value ? mermaid.value : null,
   }),
 )
 const starred = (it: { commit: { repoId: string; hash: string } }) => store.isHighlighted(commitKey(it.commit))
@@ -79,6 +90,43 @@ const color = (id: string) => {
   return c ? (prefersDark.value ? c.dark : c.light) : '#94a3b8'
 }
 const showPreview = ref(false)
+// pele render of the timeline; an error is shown as a muted line instead
+const diagram = computed<{ ok: Rendered } | { err: string } | null>(() => {
+  if (!mermaid.value) return null
+  try {
+    return { ok: renderMermaid(mermaid.value) }
+  } catch (e) {
+    return { err: e instanceof Error ? e.message : String(e) }
+  }
+})
+const imageName = (ext: string) => `shiplog-themes-${ymd(store.range.from)}-${ymd(store.range.to)}.${ext}`
+const imageNote = ref('')
+let noteTimer: ReturnType<typeof setTimeout> | undefined
+function flash(msg: string) {
+  imageNote.value = msg
+  clearTimeout(noteTimer)
+  noteTimer = setTimeout(() => (imageNote.value = ''), 2500)
+}
+function downloadSvg() {
+  const d = diagram.value
+  if (d && 'ok' in d) download(new Blob([standaloneSvg(d.ok)], { type: 'image/svg+xml' }), imageName('svg'))
+}
+async function copyImage() {
+  const d = diagram.value
+  if (!d || !('ok' in d)) return
+  try {
+    const png = await svgToPng(standaloneSvg(d.ok), d.ok.width, d.ok.height, 2)
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+      flash('Image copied ✓')
+    } catch {
+      download(png, imageName('png')) // clipboard image write unsupported
+      flash('Downloaded PNG')
+    }
+  } catch (e) {
+    flash(e instanceof Error ? e.message : 'Could not export image')
+  }
+}
 const copied = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
 async function copy() {
@@ -119,7 +167,11 @@ async function copy() {
         <Checkbox id="hide-noise" v-model="hideNoise" />
         <Label for="hide-noise" class="cursor-pointer font-normal">Hide noise (chore/ci/style/build)</Label>
       </div>
-      <Button class="ml-auto" size="sm" :disabled="!summary.totals.commits" @click="copy">
+      <div v-if="groupBy === 'theme'" class="ml-auto flex items-center gap-2 text-sm">
+        <Checkbox id="with-timeline" v-model="withTimeline" />
+        <Label for="with-timeline" class="cursor-pointer font-normal">Include timeline</Label>
+      </div>
+      <Button :class="groupBy === 'theme' ? '' : 'ml-auto'" size="sm" :disabled="!summary.totals.commits" @click="copy">
         {{ copied ? 'Copied ✓' : 'Copy as Markdown' }}
       </Button>
     </div>
@@ -256,6 +308,18 @@ async function copy() {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
+          <div v-if="diagram" class="mt-2 space-y-2">
+            <p v-if="'err' in diagram" class="text-xs text-muted-foreground">Timeline preview unavailable: {{ diagram.err }}</p>
+            <template v-else>
+              <!-- pele reads --pele-* from here; mapped to the app tokens so light/dark follow the page -->
+              <div class="pele-theme overflow-x-auto rounded-md border bg-background p-2" v-html="diagram.ok.svg" />
+              <div class="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" @click="copyImage">Copy image</Button>
+                <Button size="sm" variant="outline" @click="downloadSvg">Download SVG</Button>
+                <span v-if="imageNote" class="text-xs text-muted-foreground" role="status">{{ imageNote }}</span>
+              </div>
+            </template>
+          </div>
           <pre class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{{ markdown }}</pre>
         </CollapsibleContent>
       </Collapsible>
