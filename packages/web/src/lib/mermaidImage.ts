@@ -25,7 +25,7 @@ export const EXPORT_PALETTE: Record<string, string> = {
   'surface-alt': '#e4e4e7',
   border: '#c4c4cc',
   accent: '#4f6bd8',
-  font: 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
+  font: "system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
 }
 
 /**
@@ -33,7 +33,9 @@ export const EXPORT_PALETTE: Record<string, string> = {
  * plus a solid background, so it renders the same in any viewer.
  */
 export function standaloneSvg({ svg, width, height }: Rendered, palette = EXPORT_PALETTE): string {
-  let s = svg.replace(/var\(--pele-([a-z-]+),([^)]*)\)/g, (_, k: string, fb: string) => palette[k] ?? fb)
+  // values land inside style="..." attributes: a double quote would end the attribute and break strict XML viewers
+  const attrSafe = (v: string) => v.replace(/"/g, "'")
+  let s = svg.replace(/var\(--pele-([a-z-]+),([^)]*)\)/g, (_, k: string, fb: string) => attrSafe(palette[k] ?? fb))
   const vars = new Map<string, string>()
   s = s.replace(/--_([a-z]+):([^;"]+);?/g, (_, k: string, v: string) => (vars.set(k, v), ''))
   for (let i = 0; i < 3; i++) s = s.replace(/var\(--_([a-z]+)\)/g, (m, k: string) => vars.get(k) ?? m)

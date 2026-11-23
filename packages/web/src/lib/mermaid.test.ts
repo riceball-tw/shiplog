@@ -106,5 +106,7 @@ describe('pele parses the output', () => {
       const s = standaloneSvg(r)
       expect(s).not.toContain('var(')
       expect(s).toContain('<rect width=')
+      // well-formed XML: every attribute quoted cleanly (a stray " inside style broke file viewers)
+      for (const tag of s.match(/<[a-zA-Z][^>]*>/g)!) expect(tag).toMatch(/^<[\w:-]+(\s+[\w:-]+="[^"<]*")*\s*\/?>$/)
     })
 })
