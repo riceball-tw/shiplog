@@ -7,7 +7,7 @@ import { buildThemeGanttOption, chartTheme, OTHER_ROW_ID, themeGanttHeight, them
 import { CATEGORICAL, OTHER_COLOR, prefersDark } from '../lib/theme'
 
 const store = useAppStore()
-const rows = computed(() => themeGanttRows(store.commitsInRange, store.notes.themes, store.notes.highlights, store.range))
+const rows = computed(() => themeGanttRows(store.keptCommits, store.notes.themes, store.notes.highlights, store.range))
 const option = computed(() => {
   const dark = prefersDark.value
   return buildThemeGanttOption({

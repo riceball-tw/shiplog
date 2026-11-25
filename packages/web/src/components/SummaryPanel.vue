@@ -33,21 +33,19 @@ const GROUP_LABELS: Record<GroupBy, string> = { theme: 'Theme', ticket: 'Ticket'
 
 const store = useAppStore()
 const groupBy = ref<GroupBy>(loadPref('oo.summary.groupBy', GROUPS, 'theme'))
-const hideNoise = ref(loadPref('oo.summary.hideNoise', ['1', '0'] as const, '1') === '1')
 watch(groupBy, (v) => savePref('oo.summary.groupBy', v))
 // a click in the themes timeline needs the theme view so the card exists
 watch(() => store.themeFocus, (f) => f && (groupBy.value = 'theme'), { immediate: true })
-watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
 const withTimeline = ref(loadPref('oo.summary.mermaid', ['1', '0'] as const, '1') === '1')
 watch(withTimeline, (v) => savePref('oo.summary.mermaid', v ? '1' : '0'))
 
-const summary = computed(() => summarize(store.commitsInRange, { hideNoise: hideNoise.value }))
+const summary = computed(() => summarize(store.commitsInRange, { hideNoise: store.hideNoise }))
 const repoNames = computed(() => Object.fromEntries(store.repos.map((r) => [r.id, r.name])))
 const repoName = (id: string) => repoNames.value[id] ?? id
 const themed = computed(() => groupByTheme(summary.value.items, store.notes))
 const mermaid = computed(() =>
   groupBy.value === 'theme'
-    ? themeGanttMermaid(themeGanttRows(store.commitsInRange, store.notes.themes, store.notes.highlights, store.range), store.range, { title: rangeLabel(store.range) })
+    ? themeGanttMermaid(themeGanttRows(store.keptCommits, store.notes.themes, store.notes.highlights, store.range), store.range, { title: rangeLabel(store.range) })
     : null,
 )
 const markdown = computed(() =>
@@ -165,7 +163,7 @@ async function copy() {
         </ToggleGroup>
       </div>
       <div class="flex items-center gap-2 text-sm">
-        <Checkbox id="hide-noise" v-model="hideNoise" />
+        <Checkbox id="hide-noise" v-model="store.hideNoise" />
         <Label for="hide-noise" class="cursor-pointer font-normal">Hide noise (chore/ci/style/build)</Label>
       </div>
       <div v-if="groupBy === 'theme'" class="ml-auto flex items-center gap-2 text-sm">

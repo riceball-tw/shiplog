@@ -4,6 +4,8 @@ import { commitKey, type Commit, type Notes, type Repo, type ScanResult, type Ap
 import * as api from '../api'
 import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
 import { assignRepoColors } from '../lib/repoColors'
+import { loadPref, savePref } from '../lib/prefs'
+import { NOISE_TYPES } from '../lib/summary'
 import { DAY, dayEnd, dayStart, presetRange, ymd } from '../lib/dates'
 
 /** Inclusive range in epoch ms: from = local start of day, to = local end of day. */
@@ -66,6 +68,9 @@ export const useAppStore = defineStore('app', () => {
       /* ignore */
     }
   })
+  /** hide chore/ci/style/build commits from the summary, timeline and presentation */
+  const hideNoise = ref(loadPref('oo.summary.hideNoise', ['1', '0'] as const, '1') === '1')
+  watch(hideNoise, (v) => savePref('oo.summary.hideNoise', v ? '1' : '0'))
   const selectedKey = ref<string | null>(null)
   /** set by the themes timeline; the matching ThemeCard scrolls into view, expands, then clears it */
   const themeFocus = ref<{ id: string } | null>(null)
@@ -89,6 +94,8 @@ export const useAppStore = defineStore('app', () => {
     const { from, to } = range.value
     return visibleCommits.value.filter((c) => c.ts >= from && c.ts <= to)
   })
+  /** commits in range after the noise filter: what the summary, timeline and slides count */
+  const keptCommits = computed(() => (hideNoise.value ? commitsInRange.value.filter((c) => !NOISE_TYPES.has(c.classification.type)) : commitsInRange.value))
   const sortedRepos = computed(() => [...repos.value].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)))
   /** commit totals over ALL loaded commits (not the range) so colors stay stable while dragging */
   const commitCounts = computed(() => {
@@ -282,8 +289,8 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, selectedKey, notes, themeFocus,
-    timedCommits, visibleCommits, commitsInRange, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
+    repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, hideNoise, selectedKey, notes, themeFocus,
+    timedCommits, visibleCommits, commitsInRange, keptCommits, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
     loadRepos, loadConfig, loadCommits, loadNotes, init,
     flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, isHighlighted, toggleHighlight,
     scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select, focusTheme, clearThemeFocus,
