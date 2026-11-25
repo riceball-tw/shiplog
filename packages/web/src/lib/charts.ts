@@ -387,7 +387,7 @@ export function themeGanttRows(commits: TimedCommit[], themes: Theme[], highligh
   return rows
 }
 
-export const themeGanttHeight = (rows: number) => Math.max(1, rows) * GANTT_ROW_HEIGHT + GANTT_AXIS_HEIGHT
+export const themeGanttHeight = (rows: number, scale = 1) => (Math.max(1, rows) * GANTT_ROW_HEIGHT + GANTT_AXIS_HEIGHT) * scale
 
 const STAR_PATH = 'path://M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
@@ -399,10 +399,13 @@ export interface ThemeGanttArgs {
   colors: string[]
   otherColor: string
   theme: ChartTheme
+  /** sizes (rows, fonts, marks) multiplied for the presentation view; default 1 */
+  scale?: number
 }
 
 export function buildThemeGanttOption(a: ThemeGanttArgs): EChartsOption {
   const { theme: t, rows, range } = a
+  const k = a.scale ?? 1
   const colorOf = (r: GanttRow) => (r.colorIdx < 0 ? a.otherColor : a.colors[r.colorIdx % a.colors.length]!)
   const maxCount = (r: GanttRow) => Math.max(...r.buckets.map((b) => b.count))
   // thin rounded rect centred on the row; `min` keeps one-day marks visible
@@ -440,14 +443,14 @@ export function buildThemeGanttOption(a: ThemeGanttArgs): EChartsOption {
   return {
     animation: false,
     // grid matches the swimlane so both charts line up vertically
-    grid: { left: 110, right: 12, top: 4, bottom: GANTT_AXIS_HEIGHT - 4 },
+    grid: { left: 110 * k, right: 12 * k, top: 4 * k, bottom: (GANTT_AXIS_HEIGHT - 4) * k },
     xAxis: {
       type: 'time',
       min: range.from,
       max: range.to,
       axisLine: { lineStyle: { color: t.grid } },
       axisTick: { show: false },
-      axisLabel: { color: t.textMuted, fontSize: 11, hideOverlap: true },
+      axisLabel: { color: t.textMuted, fontSize: 11 * k, hideOverlap: true },
       splitLine: { show: true, lineStyle: { color: t.grid } },
     },
     yAxis: {
@@ -459,27 +462,27 @@ export function buildThemeGanttOption(a: ThemeGanttArgs): EChartsOption {
       axisLine: { show: false },
       axisLabel: {
         color: t.text,
-        fontSize: 12,
-        width: 96,
+        fontSize: 12 * k,
+        width: 96 * k,
         overflow: 'truncate',
         formatter: (id: string) => {
           const r = rows.find((x) => x.id === id)
           return r?.id === OTHER_ROW_ID ? `{muted|${r.name}}` : (r?.name ?? '')
         },
-        rich: { muted: { color: t.textMuted, fontSize: 12 } },
+        rich: { muted: { color: t.textMuted, fontSize: 12 * k } },
       },
       splitLine: { show: true, lineStyle: { color: t.grid } },
     },
     tooltip: { ...tooltipBase(t), trigger: 'item', formatter: (p: any) => tip(p.data?.row) },
     series: [
-      { type: 'custom', name: 'span', ...common, renderItem: rect(10, 4), data: span, z: 1 },
-      { type: 'custom', name: 'density', ...common, renderItem: rect(10, 3), data: density, z: 2 },
+      { type: 'custom', name: 'span', ...common, renderItem: rect(10 * k, 4 * k), data: span, z: 1 },
+      { type: 'custom', name: 'density', ...common, renderItem: rect(10 * k, 3 * k), data: density, z: 2 },
       {
         type: 'scatter',
         name: 'stars',
         data: stars,
         symbol: STAR_PATH,
-        symbolSize: 12,
+        symbolSize: 12 * k,
         itemStyle: { color: '#fbbf24', borderColor: t.surface, borderWidth: 1 },
         z: 3,
       },

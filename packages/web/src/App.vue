@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import AppHeader from './components/AppHeader.vue'
 import AppSidebar from './components/AppSidebar.vue'
@@ -9,6 +11,8 @@ import { mobileSidebarOpen, sidebarOpen, useSettingsSheet } from './lib/ui'
 
 /** lg breakpoint: the sidebar sits inline above it and becomes a slide-over below it */
 const isDesktop = useMediaQuery('(min-width: 1024px)')
+const route = useRoute()
+const bare = computed(() => !!route.meta.bare)
 const { open: settingsOpen, openSettings } = useSettingsSheet()
 
 // ⌘/Ctrl + , opens settings (the usual app convention)
@@ -22,7 +26,8 @@ useEventListener('keydown', (e: KeyboardEvent) => {
 
 <template>
   <TooltipProvider :delay-duration="400">
-    <div class="min-h-screen bg-background text-foreground">
+    <RouterView v-if="bare" />
+    <div v-else class="min-h-screen bg-background text-foreground">
       <AppHeader :is-desktop="isDesktop" />
       <div class="flex">
         <aside

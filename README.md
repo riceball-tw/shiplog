@@ -67,6 +67,14 @@ A review is told as a handful of **themes** ("Payments migration", "Checkout per
 
 Themes and highlights are saved to `notes.json` next to the config (`~/.shiplog/notes.json`, or `$SHIPLOG_HOME/notes.json`). Commits are referenced by `<repoId>:<hash>`; the API is `GET`/`PUT /api/notes`.
 
+## Presenting
+
+Click **Present** in the Summary toolbar (or open `#/present?from=YYYY-MM-DD&to=YYYY-MM-DD`) to walk through the range as full-screen slides: a title with headline numbers, the themes timeline, one slide per theme with work (outcome, highlights, top tickets), and "Other work". It uses the same range, repo filters and noise setting as the Summary, and follows light/dark. Themes without an outcome show "No outcome written yet", so check before the meeting.
+
+- **Right / Space / PageDown** next, **Left / PageUp** previous, **Home / End** first / last. Clicking the right or left half of the screen also moves.
+- **Esc** (or the X) returns to the main view with the same range.
+- The slide number is kept in the URL (`&slide=3`), so a refresh stays put.
+
 ## Privacy and security
 
 - The server binds to `127.0.0.1` only.

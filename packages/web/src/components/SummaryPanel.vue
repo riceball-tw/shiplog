@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { CommitType } from '@shiplog/shared'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { commitKey } from '@shiplog/shared'
 import { rangeLabel, ymd } from '../lib/dates'
@@ -25,13 +26,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { ChevronDown, ChevronRight, Eye, Plus, Star } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Eye, Plus, Presentation, Star } from '@lucide/vue'
 
 const GROUPS = ['theme', 'ticket', 'type', 'repo'] as const
 type GroupBy = (typeof GROUPS)[number]
 const GROUP_LABELS: Record<GroupBy, string> = { theme: 'Theme', ticket: 'Ticket', type: 'Type', repo: 'Repo' }
 
 const store = useAppStore()
+const router = useRouter()
+const present = () => router.push({ path: '/present', query: { from: ymd(store.range.from), to: ymd(store.range.to) } })
 const groupBy = ref<GroupBy>(loadPref('oo.summary.groupBy', GROUPS, 'theme'))
 watch(groupBy, (v) => savePref('oo.summary.groupBy', v))
 // a click in the themes timeline needs the theme view so the card exists
@@ -173,6 +176,7 @@ async function copy() {
       <Button :class="groupBy === 'theme' ? '' : 'ml-auto'" size="sm" variant="outline" :disabled="!summary.totals.commits" @click="showPreview = true">
         <Eye /> Preview
       </Button>
+      <Button size="sm" variant="outline" :disabled="!store.keptCommits.length" @click="present"><Presentation /> Present</Button>
       <Button size="sm" :disabled="!summary.totals.commits" @click="copy">
         {{ copied ? 'Copied ✓' : 'Copy as Markdown' }}
       </Button>
