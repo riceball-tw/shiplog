@@ -6,6 +6,7 @@ import { CATEGORICAL, OTHER_COLOR } from '../lib/theme'
 import { assignRepoColors } from '../lib/repoColors'
 import { loadPref, savePref } from '../lib/prefs'
 import { NOISE_TYPES } from '../lib/summary'
+import { moveWork as moveWorkIn, type WorkUnit } from '../lib/workDrag'
 import { DAY, dayEnd, dayStart, presetRange, ymd } from '../lib/dates'
 
 /** Inclusive range in epoch ms: from = local start of day, to = local end of day. */
@@ -232,6 +233,10 @@ export const useAppStore = defineStore('app', () => {
       repoIds: without(t.repoIds, what.repoIds ?? []),
     }))
   }
+  /** drag/key assignment: into theme `id`, or out of every theme when null */
+  const moveWork = (id: string | null, units: WorkUnit[]) => editNotes((n) => moveWorkIn(n, id, units))
+  /** undo: put back a notes snapshot (notes are replaced, never mutated) and save it */
+  const restoreNotes = (snapshot: Notes) => editNotes(() => snapshot)
   const isHighlighted = (key: string) => notes.value.highlights.includes(key)
   function toggleHighlight(key: string) {
     editNotes((n) => ({
@@ -292,7 +297,7 @@ export const useAppStore = defineStore('app', () => {
     repos, config, allCommits, loading, scanning, error, notesError, lastScan, range, hiddenRepoIds, hideNoise, selectedKey, notes, themeFocus,
     timedCommits, visibleCommits, commitsInRange, keptCommits, sortedRepos, repoColors, topRepoIds, isOther, visibleRepos, extent,
     loadRepos, loadConfig, loadCommits, loadNotes, init,
-    flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, isHighlighted, toggleHighlight,
+    flushNotes, createTheme, renameTheme, setOutcome, deleteTheme, reorderTheme, assign, unassign, moveWork, restoreNotes, isHighlighted, toggleHighlight,
     scan, saveConfigAndRescan, setRange, toggleRepo, setHiddenRepoIds, select, focusTheme, clearThemeFocus,
   }
 })

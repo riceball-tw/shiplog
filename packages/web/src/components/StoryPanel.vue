@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { commitKey } from '@shiplog/shared'
+import type { Notes } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
 import { rangeLabel, ymd } from '../lib/dates'
 import { themeGanttRows } from '../lib/charts'
@@ -11,9 +11,11 @@ import { loadPref, savePref } from '../lib/prefs'
 import { summarize, toMarkdown } from '../lib/summary'
 import { groupByTheme } from '../lib/themes'
 import { useRepoLookup } from '../lib/useRepoLookup'
-import TicketRow from './TicketRow.vue'
+import type { WorkUnit } from '../lib/workDrag'
+import { drag } from '../lib/useWorkDrag'
+import UnassignedInbox from './UnassignedInbox.vue'
+import ThemeDropZone from './ThemeDropZone.vue'
 import ThemeCard from './ThemeCard.vue'
-import AddToTheme from './AddToTheme.vue'
 import ThemeNameDialog from './ThemeNameDialog.vue'
 import ExportDialog from './ExportDialog.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -59,32 +61,61 @@ const showExport = ref(false)
 
 /** theme card order neighbours, so up/down move relative to what is on screen */
 const cardIds = computed(() => themed.value.cards.map((c) => c.theme.id))
-/** item waiting on the New theme dialog; assigned to the theme once it is created */
+/** work waiting on the New theme dialog; moved into the theme once it is created */
 const nameDialog = ref(false)
-let pending: { tickets?: string[]; commits?: string[] } | null = null
-function addTo(themeId: string | null, what: { tickets?: string[]; commits?: string[] }) {
-  if (themeId === null) {
-    pending = what
-    nameDialog.value = true
-    return
-  }
-  store.assign(themeId, what)
+let pending: WorkUnit[] | null = null
+const themeName = (id: string) => store.notes.themes.find((t) => t.id === id)?.name || 'Untitled theme'
+const items = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`
+
+// undo bar: remembers the notes from before the last drag/key move for ~5s
+const toast = ref<{ text: string; snapshot: Notes } | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+function flash(text: string, snapshot: Notes) {
+  toast.value = { text, snapshot }
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => (toast.value = null), 5000)
+}
+onBeforeUnmount(() => clearTimeout(toastTimer))
+function undo() {
+  if (toast.value) store.restoreNotes(toast.value.snapshot)
+  toast.value = null
+}
+function place(themeId: string | null, units: WorkUnit[]) {
+  if (!units.length) return
+  const before = store.notes
+  store.moveWork(themeId, units)
+  flash(themeId ? `Moved ${items(units.length)} to ${themeName(themeId)}` : `Unassigned ${items(units.length)}`, before)
+}
+function placeNew(units: WorkUnit[]) {
+  pending = units
+  nameDialog.value = true
 }
 function newTheme(name: string) {
+  const before = store.notes
   const id = store.createTheme(name)
-  if (pending) store.assign(id, pending)
+  if (pending?.length) {
+    store.moveWork(id, pending)
+    flash(`Moved ${items(pending.length)} to ${name}`, before)
+  } else flash(`Created ${name}`, before)
   pending = null
 }
 function openNewTheme() {
   pending = null
   nameDialog.value = true
 }
+// number keys follow theme order; badges show while the inbox has focus or something is being dragged
+const inboxFocus = ref(false)
+const numberOf = (id: string) => {
+  const n = store.notes.themes.findIndex((t) => t.id === id) + 1
+  return n >= 1 && n <= 9 && (inboxFocus.value || drag.value) ? n : undefined
+}
+const showInbox = computed(() => themed.value.unassigned.length > 0 || !!drag.value)
 const showEmpty = ref(false)
 const nf = (n: number) => n.toLocaleString()
 </script>
 
 <template>
-  <Card class="gap-0 py-0" data-testid="summary">
+  <Card class="gap-0 overflow-visible py-0" data-testid="summary">
     <div class="flex flex-wrap items-center gap-x-2 gap-y-2 border-b px-4 py-3">
       <h2 class="text-sm font-semibold">
         Themes <span v-if="store.notes.themes.length" class="font-normal text-muted-foreground">({{ store.notes.themes.length }})</span>
@@ -113,68 +144,85 @@ const nf = (n: number) => n.toLocaleString()
       <AlertDescription>{{ store.error }}</AlertDescription>
     </Alert>
     <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
-    <div v-else class="space-y-4 p-4">
-      <p v-if="!summary.totals.commits" class="text-sm text-muted-foreground">No commits in this range.</p>
-      <p v-else-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
-        {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
-      </p>
-      <p v-if="!store.notes.themes.length" class="text-sm text-muted-foreground">
-        Group tickets into themes — the stories you'll tell in your review.
-      </p>
-      <ThemeCard
-        v-for="(c, i) in themed.cards"
-        :key="c.theme.id"
-        :theme="c.theme"
-        :data="c"
-        :color="color"
-        :repo-name="repoName"
-        :can-up="i > 0"
-        :can-down="i < themed.cards.length - 1"
-        @up="store.reorderTheme(c.theme.id, cardIds[i - 1]!)"
-        @down="store.reorderTheme(c.theme.id, cardIds[i + 1]!)"
-      />
+    <div v-else class="@container">
+      <div class="space-y-4 p-4">
+        <p v-if="!summary.totals.commits" class="text-sm text-muted-foreground">No commits in this range.</p>
+        <p v-else-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
+          {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
+        </p>
+        <!-- wide panel: inbox left (sticky), themes right; narrow: inbox on top -->
+        <div class="flex flex-col gap-4" :class="showInbox && '@3xl:grid @3xl:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)] @3xl:items-start'">
+          <UnassignedInbox
+            v-if="showInbox"
+            :groups="themed.unassigned"
+            :color="color"
+            :repo-name="repoName"
+            @place="place"
+            @place-new="placeNew"
+            @focus="(on) => (inboxFocus = on)"
+          />
+          <div class="min-w-0 space-y-4">
+            <p v-if="!store.notes.themes.length" class="text-sm text-muted-foreground">
+              Group tickets into themes — the stories you'll tell in your review.
+            </p>
+            <ThemeCard
+              v-for="(c, i) in themed.cards"
+              :key="c.theme.id"
+              :theme="c.theme"
+              :data="c"
+              :color="color"
+              :repo-name="repoName"
+              :can-up="i > 0"
+              :can-down="i < themed.cards.length - 1"
+              :number="numberOf(c.theme.id)"
+              @up="store.reorderTheme(c.theme.id, cardIds[i - 1]!)"
+              @down="store.reorderTheme(c.theme.id, cardIds[i + 1]!)"
+              @drop="(us) => place(c.theme.id, us)"
+              @unassign="(us) => place(null, us)"
+            />
 
-      <!-- nothing in range: all themes are "empty", list them directly so they stay editable -->
-      <div v-if="!summary.totals.commits" class="space-y-3">
-        <ThemeCard
-          v-for="(t, i) in themed.empty"
-          :key="t.id"
-          :theme="t"
-          :color="color"
-          :repo-name="repoName"
-          :can-up="i > 0"
-          :can-down="i < themed.empty.length - 1"
-          @up="store.reorderTheme(t.id, themed.empty[i - 1]!.id)"
-          @down="store.reorderTheme(t.id, themed.empty[i + 1]!.id)"
-        />
+            <!-- nothing in range: all themes are "empty", list them directly so they stay editable -->
+            <div v-if="!summary.totals.commits" class="space-y-3">
+              <ThemeCard
+                v-for="(t, i) in themed.empty"
+                :key="t.id"
+                :theme="t"
+                :color="color"
+                :repo-name="repoName"
+                :can-up="i > 0"
+                :can-down="i < themed.empty.length - 1"
+                :number="numberOf(t.id)"
+                @up="store.reorderTheme(t.id, themed.empty[i - 1]!.id)"
+                @down="store.reorderTheme(t.id, themed.empty[i + 1]!.id)"
+                @drop="(us) => place(t.id, us)"
+              />
+            </div>
+            <!-- while dragging, collapsed themes become compact drop chips -->
+            <div v-else-if="themed.empty.length && drag" class="space-y-2">
+              <ThemeDropZone v-for="t in themed.empty" :key="t.id" :label="t.name || 'Untitled theme'" :number="numberOf(t.id)" @drop="(us) => place(t.id, us)" />
+            </div>
+            <Collapsible v-else-if="themed.empty.length" v-model:open="showEmpty" class="space-y-3">
+              <CollapsibleTrigger as-child>
+                <Button variant="link" class="h-auto px-0 text-muted-foreground" :aria-expanded="showEmpty">
+                  <component :is="showEmpty ? ChevronDown : ChevronRight" />
+                  {{ themed.empty.length }} {{ themed.empty.length === 1 ? 'theme' : 'themes' }} with no work in this range
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent class="space-y-3">
+                <ThemeCard v-for="t in themed.empty" :key="t.id" :theme="t" :color="color" :repo-name="repoName" :can-up="false" :can-down="false" @drop="(us) => place(t.id, us)" />
+              </CollapsibleContent>
+            </Collapsible>
+
+            <ThemeDropZone v-if="drag" label="+ New theme" dashed @drop="placeNew" />
+          </div>
+        </div>
       </div>
-      <Collapsible v-else-if="themed.empty.length" v-model:open="showEmpty" class="space-y-3">
-        <CollapsibleTrigger as-child>
-          <Button variant="link" class="h-auto px-0 text-muted-foreground" :aria-expanded="showEmpty">
-            <component :is="showEmpty ? ChevronDown : ChevronRight" />
-            {{ themed.empty.length }} {{ themed.empty.length === 1 ? 'theme' : 'themes' }} with no work in this range
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent class="space-y-3">
-          <ThemeCard v-for="t in themed.empty" :key="t.id" :theme="t" :color="color" :repo-name="repoName" :can-up="false" :can-down="false" />
-        </CollapsibleContent>
-      </Collapsible>
-
-      <section v-if="themed.unassigned.length" aria-label="Unassigned">
-        <h3 class="mb-1 text-sm font-semibold">Unassigned <span class="font-normal text-muted-foreground">({{ themed.unassigned.length }})</span></h3>
-        <ul class="divide-y rounded-md border">
-          <li v-for="g in themed.unassigned" :key="(g.key ?? '__none') + g.repoIds.join()">
-            <TicketRow :group="g" :color="color" :repo-name="repoName">
-              <template #actions>
-                <AddToTheme
-                  :themes="store.notes.themes"
-                  @pick="(id) => addTo(id, g.key ? { tickets: [g.key] } : { commits: g.items.map((i) => commitKey(i.commit)) })"
-                />
-              </template>
-            </TicketRow>
-          </li>
-        </ul>
-      </section>
+      <div class="pointer-events-none sticky bottom-4 flex justify-center px-4 pb-2" role="status" aria-live="polite">
+        <div v-if="toast" class="pointer-events-auto flex items-center gap-3 rounded-md border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md" data-testid="undo-toast">
+          <span>{{ toast.text }}</span>
+          <Button size="sm" variant="outline" @click="undo">Undo</Button>
+        </div>
+      </div>
     </div>
     <ThemeNameDialog v-model:open="nameDialog" @submit="newTheme" />
     <ExportDialog

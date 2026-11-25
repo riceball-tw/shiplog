@@ -4,6 +4,8 @@ import { commitKey, type Theme } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
 import { fmtShort } from '../lib/dates'
 import type { ThemeCardData } from '../lib/summary'
+import { unitOfCommit, unitOfGroup, type WorkUnit } from '../lib/workDrag'
+import { drag, endDrag, startDrag, useDropTarget } from '../lib/useWorkDrag'
 import TicketRow from './TicketRow.vue'
 import StarButton from './StarButton.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -22,8 +24,22 @@ const props = defineProps<{
   repoName: (repoId: string) => string
   canUp: boolean
   canDown: boolean
+  /** 1-9 key badge for assigning from the inbox */
+  number?: number
 }>()
-defineEmits<{ up: []; down: [] }>()
+const emit = defineEmits<{ up: []; down: []; drop: [units: WorkUnit[]]; unassign: [units: WorkUnit[]] }>()
+// not a target for work that already lives here
+const { over, handlers } = useDropTarget((units) => emit('drop', units), () => drag.value?.from !== props.theme.id)
+const dropCount = computed(() => drag.value?.units.length ?? 0)
+/** U on a focused row takes it out of this theme */
+function onRowKey(e: KeyboardEvent, unit: WorkUnit) {
+  if (e.target !== e.currentTarget || e.metaKey || e.ctrlKey || e.altKey) return
+  if (e.key === 'u' || e.key === 'U') {
+    e.preventDefault()
+    emit('unassign', [unit])
+  }
+}
+const rowClass = 'cursor-grab outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
 
 const store = useAppStore()
 const showWork = ref(false)
@@ -46,9 +62,17 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 </script>
 
 <template>
-  <Card ref="root" class="gap-0 py-0" data-testid="theme-card">
+  <Card ref="root" class="relative gap-0 py-0" :class="over && 'ring-2 ring-primary'" data-testid="theme-card" v-on="handlers">
+    <div
+      v-if="over"
+      class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/10 text-sm font-medium text-primary"
+      aria-hidden="true"
+    >
+      Drop to add {{ dropCount }} {{ dropCount === 1 ? 'item' : 'items' }} to {{ theme.name || 'Untitled theme' }}
+    </div>
     <div class="space-y-2 p-3">
       <div class="flex items-center gap-1">
+        <kbd v-if="number" class="rounded border bg-muted px-1.5 font-mono text-xs" :title="`Press ${number} to add the focused item here`">{{ number }}</kbd>
         <Input
           :model-value="theme.name"
           class="h-8 min-w-0 flex-1 border-transparent bg-transparent px-1.5 text-base font-semibold shadow-none hover:border-input"
@@ -79,7 +103,17 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 
     <template v-if="data">
       <ul v-if="data.highlights.length" class="space-y-1 border-t px-3 py-2 text-sm" aria-label="Highlights">
-        <li v-for="it in data.highlights" :key="commitKey(it.commit)" class="flex items-center gap-2">
+        <li
+          v-for="it in data.highlights"
+          :key="commitKey(it.commit)"
+          class="flex items-center gap-2"
+          :class="rowClass"
+          tabindex="0"
+          draggable="true"
+          @dragstart="startDrag($event, [unitOfCommit(commitKey(it.commit))], theme.id)"
+          @dragend="endDrag"
+          @keydown="onRowKey($event, unitOfCommit(commitKey(it.commit)))"
+        >
           <StarButton :pressed="true" @toggle="store.toggleHighlight(commitKey(it.commit))" />
           <span class="min-w-0 flex-1 truncate" :title="it.commit.subject">{{ it.title }}</span>
           <Badge v-for="t in it.commit.tickets" :key="t" variant="secondary" class="shrink-0">{{ t }}</Badge>
@@ -89,7 +123,16 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
         {{ showWork ? '▾' : '▸' }} Work in this theme
       </button>
       <ul v-if="showWork" class="divide-y border-t">
-        <li v-for="g in data.tickets" :key="g.key ?? '__none'">
+        <li
+          v-for="g in data.tickets"
+          :key="g.key ?? '__none'"
+          :class="rowClass"
+          tabindex="0"
+          draggable="true"
+          @dragstart="startDrag($event, [unitOfGroup(g)], theme.id)"
+          @dragend="endDrag"
+          @keydown="onRowKey($event, unitOfGroup(g))"
+        >
           <TicketRow :group="g" :color="color" :repo-name="repoName">
             <template #actions>
               <Button
