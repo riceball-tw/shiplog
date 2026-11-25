@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { createReusableTemplate, useElementSize } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import type { Notes } from '@shiplog/shared'
 import { useAppStore } from '../stores/app'
@@ -22,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChevronDown, ChevronRight, Download, Plus, Presentation } from '@lucide/vue'
 
@@ -110,6 +112,12 @@ const numberOf = (id: string) => {
   return n >= 1 && n <= 9 && (inboxFocus.value || drag.value) ? n : undefined
 }
 const showInbox = computed(() => themed.value.unassigned.length > 0 || !!drag.value)
+// wide panel (48rem, same as the inbox's @3xl variants): inbox and themes side by side with a draggable divider
+const body = useTemplateRef<HTMLElement>('body')
+const { width: bodyWidth } = useElementSize(body)
+const split = computed(() => showInbox.value && bodyWidth.value >= 768)
+const [DefineInbox, Inbox] = createReusableTemplate()
+const [DefineThemes, Themes] = createReusableTemplate()
 const showEmpty = ref(false)
 const nf = (n: number) => n.toLocaleString()
 </script>
@@ -145,15 +153,13 @@ const nf = (n: number) => n.toLocaleString()
     </Alert>
     <p v-else-if="store.loading" class="p-4 text-sm text-muted-foreground">Loading…</p>
     <div v-else class="@container">
-      <div class="space-y-4 p-4">
+      <div ref="body" class="space-y-4 p-4">
         <p v-if="!summary.totals.commits" class="text-sm text-muted-foreground">No commits in this range.</p>
         <p v-else-if="summary.totals.noiseHidden" class="text-sm text-muted-foreground">
           {{ nf(summary.totals.noiseHidden) }} noise {{ summary.totals.noiseHidden === 1 ? 'commit' : 'commits' }} hidden from the lists below
         </p>
-        <!-- wide panel: inbox left (sticky), themes right; narrow: inbox on top -->
-        <div class="flex flex-col gap-4" :class="showInbox && '@3xl:grid @3xl:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)] @3xl:items-start'">
+        <DefineInbox>
           <UnassignedInbox
-            v-if="showInbox"
             :groups="themed.unassigned"
             :color="color"
             :repo-name="repoName"
@@ -161,6 +167,8 @@ const nf = (n: number) => n.toLocaleString()
             @place-new="placeNew"
             @focus="(on) => (inboxFocus = on)"
           />
+        </DefineInbox>
+        <DefineThemes>
           <div class="min-w-0 space-y-4">
             <p v-if="!store.notes.themes.length" class="text-sm text-muted-foreground">
               Group tickets into themes — the stories you'll tell in your review.
@@ -215,6 +223,23 @@ const nf = (n: number) => n.toLocaleString()
 
             <ThemeDropZone v-if="drag" label="+ New theme" dashed @drop="placeNew" />
           </div>
+        </DefineThemes>
+
+        <!-- wide: resizable split (inbox width remembered); narrow: inbox on top -->
+        <ResizablePanelGroup v-if="split" direction="horizontal" auto-save-id="shiplog-story-split">
+          <!-- panels stretch to the row so the inbox can stick; overflow-visible! beats the panels' inline
+               overflow:hidden, which would break sticky and clip the drop rings -->
+          <ResizablePanel :default-size="40" :min-size="22" :max-size="65" class="overflow-visible! pr-3">
+            <Inbox />
+          </ResizablePanel>
+          <ResizableHandle with-handle />
+          <ResizablePanel :default-size="60" :min-size="35" class="overflow-visible! pl-3">
+            <Themes />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+        <div v-else class="flex flex-col gap-4">
+          <Inbox v-if="showInbox" />
+          <Themes />
         </div>
       </div>
       <div class="pointer-events-none sticky bottom-4 flex justify-center px-4 pb-2" role="status" aria-live="polite">
