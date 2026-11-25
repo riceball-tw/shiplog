@@ -8,8 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
-/** scroll: the list scrolls inside a viewport-high card (side-by-side layout) instead of growing the page */
-const props = defineProps<{ scroll?: boolean }>()
 const PAGE = 300
 const store = useAppStore()
 const limit = ref(PAGE)
@@ -41,14 +39,13 @@ watch(
     await nextTick()
     document.getElementById('commit-' + key.replace(':', '-'))?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   },
+  // immediate: a dot click switches to the Commits tab, which mounts this list after the key is set
+  { immediate: true },
 )
 </script>
 
 <template>
-  <Card class="gap-0 py-0" :class="props.scroll && 'max-h-[calc(100dvh-5rem)] overflow-hidden'" data-testid="commit-list">
-    <h2 class="shrink-0 border-b px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-      Commits ({{ store.commitsInRange.length }})
-    </h2>
+  <Card class="gap-0 py-0" data-testid="commit-list">
     <Alert v-if="store.error" variant="destructive" class="m-4 w-auto">
       <AlertDescription>{{ store.error }}</AlertDescription>
     </Alert>
@@ -56,11 +53,10 @@ watch(
     <p v-else-if="!store.commitsInRange.length" class="p-4 text-sm text-muted-foreground">
       No commits in this range. Try a wider range or Rescan.
     </p>
-    <div v-else :class="props.scroll && 'min-h-0 flex-1 overflow-y-auto overscroll-contain'">
+    <div v-else>
       <div v-for="g in groups" :key="g.key">
         <h3
-          class="border-b bg-muted px-4 py-1.5 text-xs font-semibold text-muted-foreground"
-          :class="props.scroll && 'sticky top-0 z-[1]'"
+          class="sticky top-12 z-[1] border-b bg-muted px-4 py-1.5 text-xs font-semibold text-muted-foreground"
         >{{ g.label }}</h3>
         <ul class="divide-y">
           <li

@@ -1,6 +1,6 @@
 # shiplog
 
-A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus a themes timeline (one row per theme, density and starred highlights; click a row to jump to its card). Per-repo swimlanes live in a collapsible "Repo lanes" section. Below it, a **Story** tab (your themes, exportable as a Markdown pitch you can paste into your notes) and a **Breakdown** tab (the commits grouped by ticket, type or repo) cover the selected range. **Hide noise** (chore/ci/style/build) sits in the timeline header.
+A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus a themes timeline (one row per theme, density and starred highlights; click a row to jump to its card). Per-repo swimlanes live in a collapsible "Repo lanes" section. Below it, a **Story** tab (your themes, exportable as a Markdown pitch you can paste into your notes) a **Breakdown** tab (the commits grouped by ticket, type or repo) and a **Commits** tab (the raw list; clicking a dot in the repo lanes opens it at that commit) cover the selected range. **Hide noise** (chore/ci/style/build) sits in the timeline header.
 
 ## Requirements
 

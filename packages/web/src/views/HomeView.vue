@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useElementSize } from '@vueuse/core'
 import { useAppStore } from '../stores/app'
 import { dayEnd, parseYmd, ymd } from '../lib/dates'
 import RangePresets from '../components/RangePresets.vue'
@@ -49,8 +48,8 @@ function writeUrl() {
 const TABS = ['story', 'breakdown', 'commits'] as const
 type Tab = (typeof TABS)[number]
 // 'summary' was the old first tab
-const stored = ref<Tab>(loadPref('oo.tab', TABS, 'story', { summary: 'story' }))
-watch(stored, (v) => savePref('oo.tab', v))
+const tab = ref<Tab>(loadPref('oo.tab', TABS, 'story', { summary: 'story' }))
+watch(tab, (v) => savePref('oo.tab', v))
 const lanesOpen = ref(loadPref('oo.lanesOpen', ['1', '0'] as const, '0') === '1')
 watch(lanesOpen, (v) => savePref('oo.lanesOpen', v ? '1' : '0'))
 
@@ -73,22 +72,11 @@ const needsSetup = computed(() => {
   return !!c && ((!c.scanRoots.length && !c.pinnedRepos.length) || !c.authorEmails.length)
 })
 
-// Story/Breakdown and Commits sit side by side once the content area is wide enough for two readable columns
-const WIDE_PX = 1280
-const results = useTemplateRef<HTMLElement>('results')
-const { width: resultsWidth } = useElementSize(results)
-const wide = computed(() => resultsWidth.value >= WIDE_PX)
-// wide has no Commits tab (the list is always on the right), so a stored 'commits' shows Story
-const tab = computed<Tab>({
-  get: () => (wide.value && stored.value === 'commits' ? 'story' : stored.value),
-  set: (v) => (stored.value = v),
-})
-
 // clicking a dot in the lanes reveals that commit in the list
 watch(
   () => store.selectedKey,
   (k) => {
-    if (k && !wide.value) tab.value = 'commits'
+    if (k) tab.value = 'commits'
   },
 )
 // clicking a theme row in the timeline jumps to its card
@@ -138,22 +126,16 @@ watch(
       </Collapsible>
     </Card>
 
-    <div ref="results" data-testid="results">
-      <Tabs v-model="tab" :data-layout="wide ? 'split' : 'tabs'">
-        <div :class="wide && 'grid grid-cols-2 items-start gap-4'">
-          <div class="min-w-0">
-            <TabsList variant="line" class="w-full justify-start border-b">
-              <TabsTrigger value="story">Story</TabsTrigger>
-              <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-              <TabsTrigger v-if="!wide" value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
-            </TabsList>
-            <TabsContent value="story" class="mt-3"><StoryPanel /></TabsContent>
-            <TabsContent value="breakdown" class="mt-3"><BreakdownPanel /></TabsContent>
-            <TabsContent v-if="!wide" value="commits" class="mt-3"><CommitList /></TabsContent>
-          </div>
-          <CommitList v-if="wide" scroll class="sticky top-16" />
-        </div>
-      </Tabs>
-    </div>
+    <!-- commits are evidence, not needed while telling the story: their own tab, so Story gets the full width -->
+    <Tabs v-model="tab" data-testid="results">
+      <TabsList variant="line" class="w-full justify-start border-b">
+        <TabsTrigger value="story">Story</TabsTrigger>
+        <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+        <TabsTrigger value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
+      </TabsList>
+      <TabsContent value="story" class="mt-3"><StoryPanel /></TabsContent>
+      <TabsContent value="breakdown" class="mt-3"><BreakdownPanel /></TabsContent>
+      <TabsContent value="commits" class="mt-3"><CommitList /></TabsContent>
+    </Tabs>
   </div>
 </template>
