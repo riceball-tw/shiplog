@@ -11,10 +11,14 @@ import SwimlaneChart from '../components/SwimlaneChart.vue'
 import RangeStats from '../components/RangeStats.vue'
 import ScanButton from '../components/ScanButton.vue'
 import CommitList from '../components/CommitList.vue'
-import SummaryPanel from '../components/SummaryPanel.vue'
+import StoryPanel from '../components/StoryPanel.vue'
+import BreakdownPanel from '../components/BreakdownPanel.vue'
 import SetupGuide from '../components/SetupGuide.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -42,9 +46,11 @@ function writeUrl() {
   router.replace({ query: { ...route.query, from, to } })
 }
 
-const TABS = ['summary', 'commits'] as const
-const tab = ref<string>(loadPref('oo.tab', TABS, 'summary'))
-watch(tab, (v) => savePref('oo.tab', v))
+const TABS = ['story', 'breakdown', 'commits'] as const
+type Tab = (typeof TABS)[number]
+// 'summary' was the old first tab
+const stored = ref<Tab>(loadPref('oo.tab', TABS, 'story', { summary: 'story' }))
+watch(stored, (v) => savePref('oo.tab', v))
 const lanesOpen = ref(loadPref('oo.lanesOpen', ['1', '0'] as const, '0') === '1')
 watch(lanesOpen, (v) => savePref('oo.lanesOpen', v ? '1' : '0'))
 
@@ -67,11 +73,16 @@ const needsSetup = computed(() => {
   return !!c && ((!c.scanRoots.length && !c.pinnedRepos.length) || !c.authorEmails.length)
 })
 
-// Summary and Commits sit side by side once the content area is wide enough for two readable columns
+// Story/Breakdown and Commits sit side by side once the content area is wide enough for two readable columns
 const WIDE_PX = 1280
 const results = useTemplateRef<HTMLElement>('results')
 const { width: resultsWidth } = useElementSize(results)
 const wide = computed(() => resultsWidth.value >= WIDE_PX)
+// wide has no Commits tab (the list is always on the right), so a stored 'commits' shows Story
+const tab = computed<Tab>({
+  get: () => (wide.value && stored.value === 'commits' ? 'story' : stored.value),
+  set: (v) => (stored.value = v),
+})
 
 // clicking a dot in the lanes reveals that commit in the list
 watch(
@@ -84,7 +95,7 @@ watch(
 watch(
   () => store.themeFocus,
   (f) => {
-    if (f && !wide.value) tab.value = 'summary'
+    if (f) tab.value = 'story'
   },
 )
 </script>
@@ -99,6 +110,15 @@ watch(
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-4 py-2.5">
         <RangeStats />
         <div class="ml-auto flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <div class="flex items-center gap-1.5 text-xs">
+                <Checkbox id="hide-noise" v-model="store.hideNoise" />
+                <Label for="hide-noise" class="cursor-pointer text-xs font-normal">Hide noise</Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">chore · ci · style · build</TooltipContent>
+          </Tooltip>
           <RangePresets />
           <ScanButton />
         </div>
@@ -119,17 +139,20 @@ watch(
     </Card>
 
     <div ref="results" data-testid="results">
-      <div v-if="wide" class="grid grid-cols-2 items-start gap-4" data-layout="split">
-        <SummaryPanel />
-        <CommitList scroll class="sticky top-16" />
-      </div>
-      <Tabs v-else v-model="tab" data-layout="tabs">
-        <TabsList variant="line" class="w-full justify-start border-b">
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="summary" class="mt-3"><SummaryPanel /></TabsContent>
-        <TabsContent value="commits" class="mt-3"><CommitList /></TabsContent>
+      <Tabs v-model="tab" :data-layout="wide ? 'split' : 'tabs'">
+        <div :class="wide && 'grid grid-cols-2 items-start gap-4'">
+          <div class="min-w-0">
+            <TabsList variant="line" class="w-full justify-start border-b">
+              <TabsTrigger value="story">Story</TabsTrigger>
+              <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+              <TabsTrigger v-if="!wide" value="commits">Commits ({{ store.commitsInRange.length }})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="story" class="mt-3"><StoryPanel /></TabsContent>
+            <TabsContent value="breakdown" class="mt-3"><BreakdownPanel /></TabsContent>
+            <TabsContent v-if="!wide" value="commits" class="mt-3"><CommitList /></TabsContent>
+          </div>
+          <CommitList v-if="wide" scroll class="sticky top-16" />
+        </div>
       </Tabs>
     </div>
   </div>

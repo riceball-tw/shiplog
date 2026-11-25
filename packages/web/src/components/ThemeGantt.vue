@@ -32,7 +32,7 @@ function onClick(p: any) {
 
 <template>
   <p v-if="!store.notes.themes.length" class="px-4 py-3 text-sm text-muted-foreground">
-    No themes yet — group tickets into themes in the summary below.
+    No themes yet — group tickets into themes in the Story tab below.
   </p>
   <p v-else-if="!rows.length" class="px-4 py-3 text-sm text-muted-foreground">No theme work in this range.</p>
   <VChart v-else class="w-full" :class="present ? 'pointer-events-none' : 'cursor-pointer'" :style="{ height: height + 'px' }" :option="option" autoresize @click="onClick" />

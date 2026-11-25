@@ -1,6 +1,6 @@
 # shiplog
 
-A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus a themes timeline (one row per theme, density and starred highlights; click a row to jump to its card). Per-repo swimlanes live in a collapsible "Repo lanes" section. A summary panel groups the commits in the selected range by theme, ticket, type or repo and exports a Markdown pitch you can paste into your notes.
+A local tool for preparing 1:1 meetings. It reads the git history of all your repos, keeps only the commits you authored, and shows them on a draggable timeline: an overview of stacked bars by repo plus a themes timeline (one row per theme, density and starred highlights; click a row to jump to its card). Per-repo swimlanes live in a collapsible "Repo lanes" section. Below it, a **Story** tab (your themes, exportable as a Markdown pitch you can paste into your notes) and a **Breakdown** tab (the commits grouped by ticket, type or repo) cover the selected range. **Hide noise** (chore/ci/style/build) sits in the timeline header.
 
 ## Requirements
 
@@ -52,24 +52,24 @@ Each commit gets a type (`feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `ci`
 1. If the subject is a Conventional Commit (`feat(scope): ...`, `fix!: ...`), that type is used with high confidence.
 2. Otherwise a heuristic guesses from keywords in the subject (your `classifier.keywords` first, then built-in rules), then from the changed file paths (only tests, only docs, only CI files). These are low confidence and drawn as faded dots on the timeline, and marked "(guessed)" in tooltips.
 
-Ticket ids found in subjects are collected and can be used to group the summary.
+Ticket ids found in subjects are collected and can be used to group the Breakdown.
 
 ## Themes and highlights
 
 A review is told as a handful of **themes** ("Payments migration", "Checkout performance"), each with a one-line **outcome** ("cut checkout p95 from 800 to 300 ms"). Git can't know impact, so you type the outcomes; shiplog makes the grouping fast.
 
-- In the Summary panel, **Group by -> Theme** (the default) shows one card per theme with work in the selected range: editable name and outcome, time span, repos, ticket/commit counts, its highlights, and its tickets (collapsed).
+- The **Story** tab (the default) shows one card per theme with work in the selected range: editable name and outcome, time span, repos, ticket/commit counts, its highlights, and its tickets (collapsed).
 - Work not in any theme is listed under **Unassigned**; use **Add to theme** on a ticket (or on a no-ticket group) to file it, or create a theme on the spot. Themes can be reordered and deleted (deleting only removes the grouping, never commits). Themes with no work in the range are collapsed at the bottom.
 - A commit belongs to the first theme (in theme order) that lists it explicitly, else one that lists one of its tickets, else one that lists its repo. Each commit is in at most one theme.
-- **Highlights**: star the handful of commits worth mentioning, in the Commits list or in an expanded ticket. Starred commits lead their theme in the summary and the export.
-- **Copy as Markdown** with Theme grouping exports each theme as a heading with its outcome, highlights first, then its tickets, then an "Other work" list.
-- With Theme grouping the export also starts with a Mermaid `gantt` block (the themes timeline: one section per theme, one bar per stretch of activity, a milestone per starred highlight, muted "Other work"). It renders in Obsidian, GitHub and GitLab. Untick **Include timeline** to leave it out. The "Preview markdown" section draws the diagram with [pele](https://github.com/obsidianmd/pele); **Copy image** (PNG, 2x, white background; downloads the file if the browser can't write images to the clipboard) and **Download SVG** give you the same picture for Slack, Google Docs or email, which don't render Mermaid.
+- **Highlights**: star the handful of commits worth mentioning, in the Commits list or in an expanded ticket. Starred commits lead their theme in the Story and its export.
+- **Export** in the Story tab opens a dialog whose **Copy Markdown** exports each theme as a heading with its outcome, highlights first, then its tickets, then an "Other work" list.
+- The story export also starts with a Mermaid `gantt` block (the themes timeline: one section per theme, one bar per stretch of activity, a milestone per starred highlight, muted "Other work"). It renders in Obsidian, GitHub and GitLab. Untick **Include timeline** in the dialog to leave it out. The dialog draws the diagram with [pele](https://github.com/obsidianmd/pele); **Copy image** (PNG, 2x, white background; downloads the file if the browser can't write images to the clipboard) and **Download SVG** give you the same picture for Slack, Google Docs or email, which don't render Mermaid.
 
 Themes and highlights are saved to `notes.json` next to the config (`~/.shiplog/notes.json`, or `$SHIPLOG_HOME/notes.json`). Commits are referenced by `<repoId>:<hash>`; the API is `GET`/`PUT /api/notes`.
 
 ## Presenting
 
-Click **Present** in the Summary toolbar (or open `#/present?from=YYYY-MM-DD&to=YYYY-MM-DD`) to walk through the range as full-screen slides: a title with headline numbers, the themes timeline, one slide per theme with work (outcome, highlights, top tickets), and "Other work". It uses the same range, repo filters and noise setting as the Summary, and follows light/dark. Themes without an outcome show "No outcome written yet", so check before the meeting.
+Click **Present** in the Story toolbar (or open `#/present?from=YYYY-MM-DD&to=YYYY-MM-DD`) to walk through the range as full-screen slides: a title with headline numbers, the themes timeline, one slide per theme with work (outcome, highlights, top tickets), and "Other work". It uses the same range, repo filters and noise setting as the Story, and follows light/dark. Themes without an outcome show "No outcome written yet", so check before the meeting.
 
 - **Right / Space / PageDown** next, **Left / PageUp** previous, **Home / End** first / last. Clicking the right or left half of the screen also moves.
 - **Esc** (or the X) returns to the main view with the same range.
