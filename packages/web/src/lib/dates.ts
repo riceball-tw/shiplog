@@ -43,13 +43,20 @@ export const fmtShort = (t: number) => new Date(t).toLocaleDateString(undefined,
 export const fmtLong = (t: number) =>
   new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
-/** "Nov 4 – Nov 18, 2026 (14 days)"; the year appears once unless the range crosses years */
-export function rangeLabel(r: Range): string {
+/**
+ * "Nov 4 – Nov 18, 2026 (14 days)", or "(9 of 14 days active)" when activeDays is given;
+ * the year appears once unless the range crosses years
+ */
+export function rangeLabel(r: Range, activeDays?: number): string {
   const days = Math.round((dayStart(r.to) - dayStart(r.from)) / DAY) + 1
   const a = new Date(r.from)
   const b = new Date(r.to)
   const left = a.getFullYear() === b.getFullYear() ? fmtShort(r.from) : fmtLong(r.from)
-  return `${left} – ${fmtLong(r.to)} (${days} ${days === 1 ? 'day' : 'days'})`
+  const span =
+    activeDays === undefined
+      ? `${days} ${days === 1 ? 'day' : 'days'}`
+      : `${activeDays} of ${days} ${days === 1 ? 'day' : 'days'} active`
+  return `${left} – ${fmtLong(r.to)} (${span})`
 }
 
 export type PresetKey = 'twoWeeks' | 'month' | 'threeMonths' | 'all'

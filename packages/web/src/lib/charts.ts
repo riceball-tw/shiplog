@@ -1,8 +1,10 @@
 import type { EChartsOption } from 'echarts'
-import type { Repo } from '@shiplog/shared'
+import { commitKey, type Repo, type Theme } from '@shiplog/shared'
 import type { Range, TimedCommit } from '../stores/app'
 import { COMMIT_TYPE_COLORS } from './commitTypes'
-import { DAY, dayStart, fmtLong, weekStart } from './dates'
+import { addDays, DAY, dayEnd, dayStart, fmtLong, fmtShort, weekStart } from './dates'
+import { cleanSubject } from './summary'
+import { themeOf } from './themes'
 
 export const OVERVIEW_HEIGHT = 140
 export const LANE_HEIGHT = 44
@@ -305,6 +307,184 @@ export function buildSwimlaneOption(a: SwimlaneArgs): EChartsOption {
         moveOnMouseMove: true,
         moveOnMouseWheel: false,
         minValueSpan: DAY,
+      },
+    ],
+  }
+}
+
+// ---------------------------------------------------------------- theme gantt
+
+export const GANTT_ROW_HEIGHT = 28
+export const GANTT_AXIS_HEIGHT = 28
+export const OTHER_ROW_ID = '__other__'
+/** ranges up to this long get per-day density buckets, longer ones per-week */
+export const GANTT_DAILY_MAX_DAYS = 42
+
+export interface GanttBucket {
+  start: number
+  end: number
+  count: number
+}
+export interface GanttRow {
+  id: string
+  name: string
+  outcome: string
+  /** index into the theme order (palette slot); -1 for "Other work" */
+  colorIdx: number
+  first: number
+  last: number
+  tickets: number
+  commits: number
+  /** timestamps of starred commits */
+  stars: number[]
+  /** starred commits with cleaned titles, oldest first (Mermaid milestones) */
+  starred: { ts: number; title: string }[]
+  buckets: GanttBucket[]
+}
+
+/** One row per theme with commits in range (theme order), then "Other work" for unassigned commits. */
+export function themeGanttRows(commits: TimedCommit[], themes: Theme[], highlights: string[], range: Range): GanttRow[] {
+  const starred = new Set(highlights)
+  const daily = (range.to - range.from) / DAY <= GANTT_DAILY_MAX_DAYS
+  const owned = new Map<string, TimedCommit[]>()
+  const loose: TimedCommit[] = []
+  for (const c of commits) {
+    const t = themeOf(c, themes)
+    if (!t) loose.push(c)
+    else owned.set(t.id, [...(owned.get(t.id) ?? []), c])
+  }
+  const make = (id: string, name: string, outcome: string, colorIdx: number, cs: TimedCommit[]): GanttRow => {
+    const ts = cs.map((c) => c.ts)
+    const first = Math.max(range.from, dayStart(Math.min(...ts)))
+    const last = Math.min(range.to, dayEnd(Math.max(...ts)))
+    const counts = new Map<number, number>()
+    for (const c of cs) {
+      const b = daily ? dayStart(c.ts) : weekStart(c.ts)
+      counts.set(b, (counts.get(b) ?? 0) + 1)
+    }
+    const buckets = [...counts]
+      .sort((a, b) => a[0] - b[0])
+      .map(([b, count]) => ({ start: Math.max(first, b), end: Math.min(last, daily ? dayEnd(b) : addDays(b, 7)), count }))
+    return {
+      id,
+      name,
+      outcome,
+      colorIdx,
+      first,
+      last,
+      tickets: new Set(cs.flatMap((c) => c.tickets)).size,
+      commits: cs.length,
+      stars: cs.filter((c) => starred.has(commitKey(c))).map((c) => c.ts),
+      starred: cs
+        .filter((c) => starred.has(commitKey(c)))
+        .sort((a, b) => a.ts - b.ts)
+        .map((c) => ({ ts: c.ts, title: cleanSubject(c.subject, c.tickets) })),
+      buckets,
+    }
+  }
+  const rows = themes.flatMap((t, i) => (owned.has(t.id) ? [make(t.id, t.name.trim() || 'Untitled theme', t.outcome.trim(), i, owned.get(t.id)!)] : []))
+  if (loose.length) rows.push(make(OTHER_ROW_ID, 'Other work', '', -1, loose))
+  return rows
+}
+
+export const themeGanttHeight = (rows: number, scale = 1) => (Math.max(1, rows) * GANTT_ROW_HEIGHT + GANTT_AXIS_HEIGHT) * scale
+
+const STAR_PATH = 'path://M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
+
+export interface ThemeGanttArgs {
+  rows: GanttRow[]
+  range: Range
+  /** theme palette, indexed by colorIdx % length */
+  colors: string[]
+  otherColor: string
+  theme: ChartTheme
+  /** sizes (rows, fonts, marks) multiplied for the presentation view; default 1 */
+  scale?: number
+}
+
+export function buildThemeGanttOption(a: ThemeGanttArgs): EChartsOption {
+  const { theme: t, rows, range } = a
+  const k = a.scale ?? 1
+  const colorOf = (r: GanttRow) => (r.colorIdx < 0 ? a.otherColor : a.colors[r.colorIdx % a.colors.length]!)
+  const maxCount = (r: GanttRow) => Math.max(...r.buckets.map((b) => b.count))
+  // thin rounded rect centred on the row; `min` keeps one-day marks visible
+  const rect = (h: number, min: number) => (_: unknown, api: any) => {
+    const row = api.value(0)
+    const s = api.coord([api.value(1), row])
+    const e = api.coord([api.value(2), row])
+    return {
+      type: 'rect' as const,
+      shape: { x: s[0], y: s[1] - h / 2, width: Math.max(e[0] - s[0], min), height: h, r: Math.min(h / 2, 3) },
+      style: { fill: colorOf(rows[row]!), opacity: api.value(3) },
+    }
+  }
+  const span = rows.map((r, i) => ({ value: [i, r.first, r.last, 0.22], row: i }))
+  const density = rows.flatMap((r, i) => r.buckets.map((b) => ({ value: [i, b.start, b.end, 0.4 + 0.6 * (b.count / maxCount(r))], row: i })))
+  const stars = rows.flatMap((r, i) => r.stars.map((ts) => ({ value: [ts, i], row: i })))
+
+  const tip = (i: number) => {
+    const r = rows[i]
+    if (!r) return ''
+    const when = fmtShort(r.first) === fmtShort(r.last) ? fmtShort(r.first) : `${fmtShort(r.first)} – ${fmtShort(r.last)}`
+    const outcome =
+      r.id === OTHER_ROW_ID
+        ? `<div style="color:${t.textMuted}">Not in any theme</div>`
+        : r.outcome
+          ? `<div style="margin:3px 0">${esc(r.outcome)}</div>`
+          : `<div style="margin:3px 0;color:${t.textMuted}">no outcome yet</div>`
+    return (
+      `<div style="font-weight:600">${dot(colorOf(r))}${esc(r.name)}</div>${outcome}` +
+      `<div style="color:${t.textMuted}">${esc(when)} · ${plural(r.tickets, 'ticket')} · ${plural(r.commits, 'commit')} · ${plural(r.stars.length, 'highlight')}</div>`
+    )
+  }
+  const common = { coordinateSystem: 'cartesian2d' as const, encode: { x: [1, 2], y: 0 }, clip: true }
+
+  return {
+    animation: false,
+    // grid matches the swimlane so both charts line up vertically
+    grid: { left: 110 * k, right: 12 * k, top: 4 * k, bottom: (GANTT_AXIS_HEIGHT - 4) * k },
+    xAxis: {
+      type: 'time',
+      min: range.from,
+      max: range.to,
+      axisLine: { lineStyle: { color: t.grid } },
+      axisTick: { show: false },
+      axisLabel: { color: t.textMuted, fontSize: 11 * k, hideOverlap: true },
+      splitLine: { show: true, lineStyle: { color: t.grid } },
+    },
+    yAxis: {
+      type: 'category',
+      inverse: true,
+      data: rows.map((r) => r.id),
+      triggerEvent: true,
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: {
+        color: t.text,
+        fontSize: 12 * k,
+        width: 96 * k,
+        overflow: 'truncate',
+        formatter: (id: string) => {
+          const r = rows.find((x) => x.id === id)
+          return r?.id === OTHER_ROW_ID ? `{muted|${r.name}}` : (r?.name ?? '')
+        },
+        rich: { muted: { color: t.textMuted, fontSize: 12 * k } },
+      },
+      splitLine: { show: true, lineStyle: { color: t.grid } },
+    },
+    tooltip: { ...tooltipBase(t), trigger: 'item', formatter: (p: any) => tip(p.data?.row) },
+    series: [
+      { type: 'custom', name: 'span', ...common, renderItem: rect(10 * k, 4 * k), data: span, z: 1 },
+      { type: 'custom', name: 'density', ...common, renderItem: rect(10 * k, 3 * k), data: density, z: 2 },
+      {
+        type: 'scatter',
+        name: 'stars',
+        data: stars,
+        symbol: STAR_PATH,
+        symbolSize: 12 * k,
+        itemStyle: { color: '#fbbf24', borderColor: t.surface, borderWidth: 1 },
+        z: 3,
       },
     ],
   }

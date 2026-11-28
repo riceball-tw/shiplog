@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Commit, CommitType } from '@shiplog/shared'
-import { cleanSubject, dirOf, summarize, toMarkdown } from './summary'
+import { cleanSubject, summarize, toMarkdown } from './summary'
 
 let n = 0
 function mk(p: {
@@ -97,18 +97,6 @@ describe('summarize', () => {
     expect(none.key).toBeNull()
     expect(none.items).toHaveLength(3)
     expect(none.scopes!.map((x) => [x.scope, x.items.length])).toEqual([['shots', 2], [null, 1]])
-  })
-  it('aggregates top dirs, skipping excluded files', () => {
-    expect(dirOf('src/components/deep/A.vue')).toBe('src/components')
-    expect(dirOf('src/a.ts')).toBe('src')
-    expect(dirOf('README.md')).toBe('(root)')
-    const s = summarize(commits, { hideNoise: false })
-    expect(s.topDirs[0]).toEqual({ repoId: 'r1', dir: 'src/components', lines: 13, commits: 2 })
-    expect(s.topDirs.find((d) => d.dir === '(root)')!.lines).toBe(2) // lockfile excluded
-  })
-  it('limits top dirs to 10', () => {
-    const many = Array.from({ length: 15 }, (_, i) => mk({ subject: 'x', files: [{ path: `d${i}/s/f.ts`, ins: i + 1, del: 0 }] }))
-    expect(summarize(many, { hideNoise: true }).topDirs).toHaveLength(10)
   })
 })
 

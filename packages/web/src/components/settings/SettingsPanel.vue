@@ -22,14 +22,6 @@ import { Check, ChevronDown, FolderOpen, Loader2, Search, X } from '@lucide/vue'
 const props = defineProps<{ section: SectionId | null }>()
 const store = useAppStore()
 
-const NAV: { id: SectionId; label: string }[] = [
-  { id: 'folders', label: 'Folders' },
-  { id: 'emails', label: 'Emails' },
-  { id: 'repos', label: 'Repos' },
-  { id: 'history', label: 'History' },
-  { id: 'advanced', label: 'Advanced' },
-]
-
 const rm = 'ml-auto h-auto shrink-0 px-1 py-0 text-muted-foreground hover:text-destructive'
 const advancedOpen = ref(false)
 const body = ref<HTMLElement | null>(null)
@@ -187,9 +179,6 @@ function discard() {
         Where the timeline's commits come from. Saving writes <span class="font-mono">config.json</span> and rescans your repos (a few seconds).
         Hiding repos from view is in the sidebar and is instant.
       </SheetDescription>
-      <nav class="mt-3 -mb-1 flex flex-wrap gap-1" aria-label="Settings sections">
-        <Button v-for="n in NAV" :key="n.id" variant="ghost" size="xs" class="text-muted-foreground" @click="jump(n.id)">{{ n.label }}</Button>
-      </nav>
     </header>
 
     <div v-if="!draft" class="flex-1 p-5 text-sm text-muted-foreground">
