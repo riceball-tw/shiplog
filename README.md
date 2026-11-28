@@ -90,6 +90,7 @@ packages/
   shared/   TypeScript types and the API contract (AppConfig, Commit, ...)
   server/   Hono API: config, repo discovery, git log parsing, classifier, in-memory store
   web/      Vue 3 + Vite + Tailwind v4 + shadcn-vue + Pinia + ECharts UI
+  e2e/      Playwright browser tests on synthetic git repos
 ```
 
 ## Scripts
@@ -101,5 +102,15 @@ Run from the repo root:
 | `pnpm dev` | Server and web dev servers with reload |
 | `pnpm build` | Build all packages (type-checks the web app first) |
 | `pnpm start` | Run the built server, serving the built UI |
-| `pnpm test` | Run all unit tests (vitest) |
+| `pnpm test` | Run all unit tests (vitest; does not include e2e) |
+| `pnpm test:e2e` | Build, then run the Playwright browser tests (see Testing) |
 | `pnpm typecheck` | Type-check all packages |
+
+## Testing
+
+- **Unit tests**: `pnpm test` (vitest, server and web). Fast, no browser.
+- **End-to-end tests**: `pnpm test:e2e` builds the app and drives the production bundle in headless Chromium with Playwright (`packages/e2e`). First time only, install the browser: `pnpm --filter @shiplog/e2e exec playwright install chromium`. To rerun without rebuilding: `pnpm --filter @shiplog/e2e e2e` (add `--ui` or `--headed` to watch, or a spec name to run one file).
+
+The e2e run never touches your real data. It creates throwaway git repos (commits by `e2e@example.com`, dated relative to today) and a temp `SHIPLOG_HOME` in the OS temp dir, starts the server on port **4399** (not 4317 or 5173, so your dev servers can keep running), and deletes everything on exit. The tests share one server and run serially; notes are reset before each test.
+
+Reports and traces land in `packages/e2e/playwright-report/` and `packages/e2e/test-results/` (git-ignored). Traces and screenshots are kept for failures only: `pnpm --filter @shiplog/e2e exec playwright show-report`, or `playwright show-trace <trace.zip>`.
