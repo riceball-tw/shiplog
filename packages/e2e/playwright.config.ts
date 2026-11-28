@@ -11,6 +11,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
+  // the healthy suite takes ~30s; a broken build once ran past 40 min, so fail the whole run instead of hanging
+  globalTimeout: 10 * 60_000,
   expect: { timeout: 7_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
